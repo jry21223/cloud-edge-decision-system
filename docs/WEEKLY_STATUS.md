@@ -31,7 +31,7 @@
 ### 阻塞
 
 - 当前执行环境无 Docker，因此尚未验证 Docker Compose 与 Toxiproxy 容器启动；FastAPI 多进程集成测试已通过；
-- GitHub 连接未提供“创建新仓库”操作，需要在 GitHub 创建空仓库后推送，或由已有仓库承载。
+- GitHub 私有仓库已创建，MVP、系统设计、Roadmap、ADR 与 CI 已写入 `main`。
 
 ### 下周建议
 

@@ -227,4 +227,4 @@ Dashboard：`http://localhost:8080`。
 
 ### GitHub
 
-本地 Git 仓库已经初始化。当前 GitHub 连接器不提供新建仓库接口，交付包中包含 `.git` 历史和 `docs/PUSH_TO_GITHUB.md`，创建空私有仓库后可直接推送。
+正式私有仓库已建立：`jry21223/cloud-edge-decision-system`。MVP、Roadmap、系统设计、ADR、测试与 CI 已写入 `main`。

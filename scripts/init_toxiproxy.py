@@ -8,7 +8,7 @@ import httpx
 API = os.getenv("TOXIPROXY_API_URL", "http://toxiproxy:8474").rstrip("/")
 UPSTREAM = os.getenv("TOXIPROXY_UPSTREAM", "cloud-node:8000")
 
-for attempt in range(60):
+for _attempt in range(60):
     try:
         with httpx.Client(timeout=1.0) as client:
             existing = client.get(f"{API}/proxies")
