@@ -1,0 +1,3 @@
+{"task_id":"sample-normal","scene":"industrial","payload":{"temperature":30,"vibration":1.1,"current":5.2},"risk_level":"low","deadline_ms":800}
+{"task_id":"sample-ambiguous","scene":"industrial","payload":{"temperature":84,"vibration":7.2,"current":16.2,"log":"轴承出现间歇异响"},"risk_level":"high","deadline_ms":900}
+{"task_id":"sample-critical","scene":"industrial","payload":{"temperature":96,"vibration":8.4,"current":18.5},"risk_level":"critical","deadline_ms":300}

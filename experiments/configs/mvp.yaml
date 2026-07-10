@@ -1,0 +1,13 @@
+name: mvp-v0.1
+local_confidence_threshold: 0.80
+cloud_timeout_ms: 800
+cloud_inference_delay_ms: 350
+scenarios:
+  - industrial
+routes:
+  - EDGE
+  - CLOUD
+  - EDGE_FALLBACK
+  - EDGE_SAFETY
+notes: >-
+  仅用于系统集成验证，不用于报告真实模型性能。

@@ -1,0 +1,10 @@
+flowchart TD
+    A[任务到达 Edge] --> B[本地推理]
+    B --> C{高风险或高危预测?}
+    C -->|是| D[EDGE_SAFETY]
+    C -->|否| E{confidence >= threshold?}
+    E -->|是| F[EDGE]
+    E -->|否| G[请求 Controller]
+    G --> H{云端可在 deadline 内完成?}
+    H -->|是| I[CLOUD]
+    H -->|否| J[EDGE_FALLBACK]

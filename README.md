@@ -9,7 +9,21 @@
 
 > 当前版本：MVP v0.1。默认使用可解释规则模型，用于验证系统架构、调度路径、弱网降级和指标采集。真实 ONNX/轻量模型将在不改变服务接口的前提下替换。
 
-![系统架构](docs/assets/system-architecture.svg)
+```mermaid
+flowchart TB
+    A[场景与数据层] --> B[边缘自治层 Edge]
+    B -->|高置信度/低风险| C[本地快速路径]
+    B -->|低置信度/需复核| D[Controller / Scheduler]
+    D -->|云端可用且满足 deadline| E[Toxiproxy / tc-netem]
+    E --> F[Cloud Inference]
+    D -->|后续扩展| G[Peer Edge]
+    D -->|远端不可用| H[EDGE_FALLBACK]
+    C --> I[最终决策]
+    F --> I
+    G --> I
+    H --> I
+    I --> J[Recorder / Dashboard]
+```
 
 ## 1. 服务组成
 

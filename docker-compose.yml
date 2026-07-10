@@ -1,0 +1,123 @@
+name: cloud-edge-decision
+
+x-app-base: &app-base
+  build:
+    context: .
+  restart: unless-stopped
+  networks:
+    - cloud-edge-net
+
+services:
+  recorder:
+    <<: *app-base
+    command: uvicorn services.recorder.main:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: sqlite:////data/metrics.db
+    volumes:
+      - metrics-data:/data
+    ports:
+      - "8004:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  cloud-node:
+    <<: *app-base
+    command: uvicorn services.cloud_node.main:app --host 0.0.0.0 --port 8000
+    environment:
+      RECORDER_URL: http://recorder:8000
+      CLOUD_INFERENCE_DELAY_MS: ${CLOUD_INFERENCE_DELAY_MS:-350}
+    depends_on:
+      recorder:
+        condition: service_healthy
+    ports:
+      - "8003:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  toxiproxy:
+    image: shopify/toxiproxy:2.12.0
+    restart: unless-stopped
+    networks:
+      - cloud-edge-net
+    ports:
+      - "8474:8474"
+      - "8666:8666"
+
+  toxiproxy-init:
+    <<: *app-base
+    command: python scripts/init_toxiproxy.py
+    environment:
+      TOXIPROXY_API_URL: http://toxiproxy:8474
+      TOXIPROXY_UPSTREAM: cloud-node:8000
+    depends_on:
+      cloud-node:
+        condition: service_healthy
+      toxiproxy:
+        condition: service_started
+    restart: "no"
+
+  controller:
+    <<: *app-base
+    command: uvicorn services.controller.main:app --host 0.0.0.0 --port 8000
+    environment:
+      CLOUD_URL: http://toxiproxy:8666
+      RECORDER_URL: http://recorder:8000
+      CLOUD_TIMEOUT_MS: ${CLOUD_TIMEOUT_MS:-800}
+    depends_on:
+      recorder:
+        condition: service_healthy
+      toxiproxy-init:
+        condition: service_completed_successfully
+    ports:
+      - "8002:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  edge-a:
+    <<: *app-base
+    command: uvicorn services.edge_node.main:app --host 0.0.0.0 --port 8000
+    environment:
+      NODE_ID: edge-a
+      CONTROLLER_URL: http://controller:8000
+      RECORDER_URL: http://recorder:8000
+      LOCAL_CONFIDENCE_THRESHOLD: ${LOCAL_CONFIDENCE_THRESHOLD:-0.80}
+      ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-true}
+    depends_on:
+      controller:
+        condition: service_healthy
+      recorder:
+        condition: service_healthy
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  dashboard:
+    <<: *app-base
+    command: uvicorn services.dashboard.main:app --host 0.0.0.0 --port 8000
+    environment:
+      RECORDER_URL: http://recorder:8000
+    depends_on:
+      recorder:
+        condition: service_healthy
+    ports:
+      - "8080:8000"
+
+networks:
+  cloud-edge-net:
+    driver: bridge
+
+volumes:
+  metrics-data:

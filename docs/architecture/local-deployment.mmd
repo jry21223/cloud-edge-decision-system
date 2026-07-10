@@ -1,0 +1,9 @@
+flowchart LR
+    C[Client] --> E[Edge A :8001]
+    E --> S[Controller :8002]
+    S --> T[Toxiproxy :8666]
+    T --> CL[Cloud :8003]
+    E -.events.-> R[Recorder :8004]
+    S -.events.-> R
+    CL -.events.-> R
+    R --> D[Dashboard :8080]

@@ -1,0 +1,26 @@
+name: Feature
+about: 新功能或技术模块
+labels: [enhancement]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 输入、输出与范围
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依赖与风险

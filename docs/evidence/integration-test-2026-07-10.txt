@@ -1,0 +1,14 @@
+Environment: Python 3.13.5, Linux container, no Docker runtime
+Commit base: 236bdb9
+Test method: start Recorder, Cloud, Controller and Edge as separate Uvicorn processes; stop Cloud before fallback case.
+
+it-edge EDGE
+it-cloud CLOUD
+it-safety EDGE_SAFETY
+it-fallback EDGE_FALLBACK
+summary: total_events=10, routes={CLOUD:2, EDGE:2, EDGE_FALLBACK:2, EDGE_SAFETY:2}
+INTEGRATION PASS
+
+Notes:
+- Four routing paths were verified through real HTTP calls between independent processes.
+- Docker Compose, Toxiproxy container startup, and cross-platform behavior remain to be verified on a team member machine with Docker Desktop/Engine.
