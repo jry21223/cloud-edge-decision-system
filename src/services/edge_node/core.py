@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any
 
 from common.schemas import InferenceResult, Route, TaskRequest
+
+logger = logging.getLogger(__name__)
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -92,7 +95,8 @@ def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
     allow_test_controls = os.getenv("ALLOW_TEST_CONTROLS", "false").lower() == "true"
     if allow_test_controls and "force_confidence" in task.metadata:
         confidence = _clamp(float(task.metadata["force_confidence"]), 0.0, 1.0)
-        reason = f"{reason}；测试模式覆盖 confidence"
+        reason = f"{reason}；测试控制 force_confidence 已应用"
+        logger.warning("test control applied: task_id=%s control=force_confidence", task.task_id)
 
     elapsed_ms = (time.perf_counter() - started) * 1000
     return InferenceResult(
