@@ -90,7 +90,7 @@ services:
       CONTROLLER_URL: http://controller:8000
       RECORDER_URL: http://recorder:8000
       LOCAL_CONFIDENCE_THRESHOLD: ${LOCAL_CONFIDENCE_THRESHOLD:-0.80}
-      ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-true}
+      ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-false}
     depends_on:
       controller:
         condition: service_healthy

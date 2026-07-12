@@ -13,6 +13,7 @@ ruff check src tests scripts
 - 高 confidence 本地路由；
 - 低 confidence 请求升级；
 - critical 风险立即安全动作；
+- 测试控制在默认关闭时被忽略、显式开启时可追溯；
 - 工业和交通场景的保守降级；
 - 云端融合规则。
 
@@ -20,10 +21,13 @@ ruff check src tests scripts
 
 ```bash
 cp .env.example .env
-docker compose up --build -d
+docker compose -f docker-compose.yml -f compose.test.yml up --build -d
 docker compose ps
 python scripts/smoke_test.py
 ```
+
+`compose.test.yml` 仅用于冒烟测试，并显式将 `ALLOW_TEST_CONTROLS` 设为 `true`。
+普通部署只运行 `docker compose up --build -d`，会保持该配置为 `false`。
 
 预期：
 

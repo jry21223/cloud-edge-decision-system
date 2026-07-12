@@ -1,0 +1,5 @@
+services:
+  edge-a:
+    environment:
+      # Smoke tests deliberately control confidence to exercise each route.
+      ALLOW_TEST_CONTROLS: "true"

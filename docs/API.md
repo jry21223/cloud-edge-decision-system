@@ -43,7 +43,9 @@
 }
 ```
 
-> `metadata.force_confidence` 仅在 `ALLOW_TEST_CONTROLS=true` 时有效，用于可重复冒烟测试，正式实验必须关闭。
+> `metadata.force_confidence` 默认会被忽略。仅在使用 `compose.test.yml` 或显式设置
+> `ALLOW_TEST_CONTROLS=true` 的隔离测试环境中有效；控制被应用时会写入 Edge 日志和
+> Recorder 决策事件的 `edge_result.reason`。共享或生产环境不得开启该配置。
 
 ### `POST /v1/infer`
 

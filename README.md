@@ -57,8 +57,12 @@ curl http://localhost:8004/health
 运行四条主路径的冒烟测试：
 
 ```bash
+docker compose -f docker-compose.yml -f compose.test.yml up --build -d
 python scripts/smoke_test.py
 ```
+
+默认 Compose 配置会关闭 `ALLOW_TEST_CONTROLS`，因此请求中的 `metadata.force_confidence`
+不会影响调度。冒烟测试使用 `compose.test.yml` 显式开启该测试专用控制；不要在共享或生产环境启用它。
 
 打开 Dashboard：
 
@@ -92,7 +96,9 @@ curl -X POST http://localhost:8001/v1/tasks \
   }'
 ```
 
-预期路由：`CLOUD`。
+默认配置会忽略 `metadata.force_confidence`。如需复现该测试路由，请先用上方的
+`compose.test.yml` 覆盖启动；测试控制已应用时会写入 Edge 日志和 Recorder 决策事件的
+`edge_result.reason`。
 
 ## 4. 模拟云端断开
 
