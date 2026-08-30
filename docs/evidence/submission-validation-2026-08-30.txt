@@ -4,7 +4,7 @@ Branch: codex/submission-20260830
 Base: origin/main at 67edea0640ae69efa2fa8b46f2f4c69c9e5c71ad
 
 Static and unit validation
-- python -m pytest: 42 passed
+- python -m pytest 9.0.3: 42 passed
 - python -m ruff check src tests scripts: All checks passed
 - docker compose config --quiet: exit 0
 - git diff --cached --check: exit 0
@@ -39,3 +39,5 @@ Limitations
 - No weak-network condition or representative industrial image dataset was used.
 - These numbers validate the software path and measurement runner only; they do
   not prove that any competition performance target has been reached.
+- GitHub Actions did not start a runner because of the repository account's
+  billing/spending-limit state; the failure contained no executed CI steps.

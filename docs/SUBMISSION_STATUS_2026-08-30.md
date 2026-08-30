@@ -28,6 +28,7 @@
 
 ```text
 自动化测试：42 passed
+pytest：9.0.3（修复 9.0.2 的已知中危问题）
 Ruff：All checks passed
 docker compose -f docker-compose.yml config -q：exit 0
 docker compose -f docker-compose.yml -f compose.test.yml config -q：exit 0
@@ -42,6 +43,9 @@ Recorder：五类路由均形成事件记录
 压力检查使用规则推理和合成传感字段，未注入弱网，也未使用真实工业图像；其结果只用于验证
 runner 与当前服务链路，不能外推为比赛 0.2s 指标已经达标。绑定提交前的候选验证记录见
 `docs/evidence/submission-validation-2026-08-30.txt`。
+
+GitHub Actions 的远端任务未获得 runner，平台返回原因为仓库账户计费/额度状态；失败记录没有
+执行任何 CI 步骤。该外部门禁需由仓库管理员恢复，不能当作代码测试失败。
 
 ## 比赛硬指标状态
 
