@@ -1,0 +1,23 @@
+{
+  "model_path": "models\\artifacts\\deepseek-r1-distill-qwen-1.5b-q4_0\\deepseek-r1-distill-qwen-1.5b-q4_0.gguf",
+  "model_file_size_mb": 1016.83,
+  "context_tokens": 512,
+  "max_output_tokens": 64,
+  "warmup_tokens": 0,
+  "warmup_generation_ms": null,
+  "gpu_layers": 0,
+  "threads": null,
+  "model_load_ms": 542.83,
+  "prompt_tokens": 65,
+  "generated_tokens": 26,
+  "ttft_ms": 15994.29,
+  "generation_ms": 16805.4,
+  "generated_tokens_per_second": 1.547,
+  "process_rss_before_mb": 190.96,
+  "process_rss_peak_mb": 1507.05,
+  "process_rss_after_mb": 1507.04,
+  "nvidia_used_memory_before_mb": 2133.0,
+  "nvidia_used_memory_peak_mb": 2766.0,
+  "nvidia_used_memory_after_mb": 2740.0,
+  "output": "不需要解释，直接回答。\n</think>\n\n风险等级：critical  \n建议动作：检查轴承内是否有泄漏，必要时更换。"
+}

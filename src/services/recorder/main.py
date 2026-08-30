@@ -82,10 +82,40 @@ async def summary() -> dict[str, object]:
             select(Event.route, func.count(Event.id)).where(Event.route.is_not(None), Event.event_type == "decision").group_by(Event.route)
         ).all()
         components = session.execute(select(Event.component, func.count(Event.id)).group_by(Event.component)).all()
+        arbitration_rows = session.scalars(
+            select(Event).where(Event.event_type == "arbitration")
+        ).all()
+        arbitration_data = [json.loads(row.data_json) for row in arbitration_rows]
+        arbitration_total = len(arbitration_data)
+        conflicts = sum(bool(item.get("conflict")) for item in arbitration_data)
+        conflict_rows = [item for item in arbitration_data if bool(item.get("conflict"))]
+        autonomous_resolutions = sum(
+            bool(item.get("resolution_success")) for item in conflict_rows
+        )
+        labeled_conflicts = [
+            item for item in conflict_rows if "resolution_correct" in item
+        ]
+        correct_resolutions = sum(
+            bool(item.get("resolution_correct")) for item in labeled_conflicts
+        )
         return {
             "total_events": total,
             "routes": {route: count for route, count in routes},
             "components": {component: count for component, count in components},
+            "arbitration": {
+                "total": arbitration_total,
+                "conflict_count": conflicts,
+                "conflict_rate": 0 if arbitration_total == 0 else round(conflicts / arbitration_total, 4),
+                "autonomous_resolution_rate": (
+                    0 if conflicts == 0 else round(autonomous_resolutions / conflicts, 4)
+                ),
+                "resolution_success_rate": (
+                    None
+                    if not labeled_conflicts
+                    else round(correct_resolutions / len(labeled_conflicts), 4)
+                ),
+                "labeled_conflicts": len(labeled_conflicts),
+            },
         }
 
 

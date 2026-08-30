@@ -1,0 +1,41 @@
+Cloud-Edge submission candidate validation
+Date: 2026-08-30 (Asia/Shanghai)
+Branch: codex/submission-20260830
+Base: origin/main at 67edea0640ae69efa2fa8b46f2f4c69c9e5c71ad
+
+Static and unit validation
+- python -m pytest: 42 passed
+- python -m ruff check src tests scripts: All checks passed
+- docker compose config --quiet: exit 0
+- git diff --cached --check: exit 0
+
+Container validation
+- Docker Engine: 29.6.1
+- Compose build: succeeded for recorder, cloud-node, controller, edge-a,
+  edge-b, dashboard and toxiproxy-init
+- Healthy services: recorder, cloud-node, controller, edge-a and edge-b
+- Toxiproxy: running with ghcr.io/shopify/toxiproxy:2.12.0
+
+Five-route smoke validation
+- EDGE: passed
+- PEER_EDGE: passed
+- EDGE_SAFETY: passed
+- CLOUD: passed
+- EDGE_FALLBACK: passed
+- Recorder summary contained one or more events for every route above
+
+Synthetic pressure-run sanity check
+- Scene: industrial synthetic sensor fields
+- Requests: 30
+- Concurrency: 5
+- Deadline used by runner: 500ms
+- Successful responses: 30/30
+- Client-observed mean latency: 54.28ms
+- Client-observed P95 latency: 121.98ms
+- Route distribution: EDGE=10, EDGE_SAFETY=10, PEER_EDGE=10
+
+Limitations
+- This was a single local synthetic run with the rule backend.
+- No weak-network condition or representative industrial image dataset was used.
+- These numbers validate the software path and measurement runner only; they do
+  not prove that any competition performance target has been reached.

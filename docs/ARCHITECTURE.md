@@ -1,13 +1,13 @@
 # 系统架构设计
 
 > 版本：v1.0  
-> 状态：架构定稿，MVP v0.1 已实现
+> 状态：架构定稿，MVP 原型代码已实现；当前 commit 的 Compose 实测待完成
 
 ## 1. 架构结论
 
 采用 **边缘自治 + 中央协同调度 + 云端增强** 的分层架构。
 
-传感器或客户端首先将任务交给边缘节点。边缘节点独立完成高置信度、低风险任务和紧急安全动作；只有不确定任务才请求 Controller。Controller 根据云端可用性、时间预算和后续扩展的网络/负载信息选择云端、其他边缘节点或本地降级。
+传感器或客户端首先将任务交给边缘节点。边缘节点独立完成高置信度、低风险任务和紧急安全动作；只有不确定任务才请求 Controller。Controller 根据任务风险、剩余时间预算、请求携带的网络快照和节点心跳信息，对云端、其他边缘节点和本地降级统一评分。
 
 ```mermaid
 flowchart TB
@@ -16,7 +16,7 @@ flowchart TB
     B -->|低置信度/需复核| D[Controller / Scheduler]
     D -->|云端可用且满足 deadline| E[Toxiproxy / tc-netem]
     E --> F[Cloud Inference]
-    D -->|后续扩展| G[Peer Edge]
+    D -->|健康且满足 deadline| G[Peer Edge]
     D -->|远端不可用| H[EDGE_FALLBACK]
     C --> I[最终决策]
     F --> I
@@ -43,7 +43,7 @@ flowchart TB
 - Model Adapter：规则、XGBoost、ONNX、量化小模型的统一接口；
 - Confidence & Risk：生成预测、置信度、风险和耗时；
 - Local Policy：本地直返、紧急安全动作和保守降级；
-- Resource Agent：后续采集 CPU、内存、队列与模型版本；
+- Resource Agent：当前通过环境变量上报负载、队列、预估时延和模型版本；真实在线采样待接入；
 - Local Store：后续实现断网缓存和恢复同步。
 
 ### Controller
@@ -72,24 +72,31 @@ flowchart TD
     C -->|否| E{confidence >= threshold?}
     E -->|是| F[EDGE]
     E -->|否| G[请求 Controller]
-    G --> H{云端可在 deadline 内完成?}
-    H -->|是| I[CLOUD]
-    H -->|否| J[EDGE_FALLBACK]
+    G --> H[DREAM-Route 构造 PEER / CLOUD / FALLBACK 候选]
+    H --> I{最优可行路径?}
+    I -->|健康 Peer| J[PEER_EDGE]
+    I -->|云端| K[CLOUD]
+    I -->|远端不可行或失败| L[EDGE_FALLBACK]
 ```
 
-MVP 的规则：
+当前在线规则可简化为：
 
 ```python
 if task.risk_level == "critical" or edge_result.prediction is critical:
     return EDGE_SAFETY
 if edge_result.confidence >= local_threshold:
     return EDGE
-if cloud_can_finish_before_deadline:
-    return CLOUD
-return EDGE_FALLBACK
+plan = rank(peer_candidates + [cloud, fallback], risk, network, load, deadline)
+for route in plan:
+    refresh_remaining_deadline()
+    if route is feasible and remote_call_succeeds(route):
+        return route
+return conservative_local_fallback()
 ```
 
-第二阶段再加入网络 RTT、丢包率、节点 CPU/内存/队列和 Peer Edge。
+当前网络 RTT、抖动、丢包率和可用率来自请求 `metadata.network`，节点负载/队列来自心跳；
+它们是可控实验输入，尚不是系统自动测得的实时遥测。DREAM-Fuse 已在独立
+`POST /v1/arbitrate` 接口实现，但普通 `/v1/tasks` 路径尚未自动收集多个 Peer 的关联结果并触发融合。
 
 ## 5. 本地部署
 
@@ -113,6 +120,8 @@ flowchart LR
 - 所有 Peer 选择由 Controller 完成；
 - `hop_count <= 1`；
 - `visited_nodes` 防止重复访问；
-- `task_id` 保证幂等；
+- `task_id` 作为幂等键的设计约束；持久化去重尚待实现；
 - 超过 deadline 立即降级；
-- 仲裁顺序：高风险优先 → 高置信度优先 → 云端裁决 → 保守策略。
+- 仲裁使用 DREAM-Fuse：校准置信度 × 节点可靠度 × 新鲜度 × 时空一致性 × 版本系数；
+- 高风险且证据充分时立即执行保守安全动作；普通低共识冲突请求云复核；
+- `resolution_success`（自主形成结果）与带 ground truth 的正确解决率分开统计。

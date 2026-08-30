@@ -1,3 +1,8 @@
+LEGACY RECORD — NOT EVIDENCE FOR CURRENT HEAD
+
+The referenced base commit is not present in the current repository history. Keep this file only as a
+historical note; do not cite its route counts as verification of the 2026-08-30 implementation.
+
 Environment: Python 3.13.5, Linux container, no Docker runtime
 Commit base: 236bdb9
 Test method: start Recorder, Cloud, Controller and Edge as separate Uvicorn processes; stop Cloud before fallback case.

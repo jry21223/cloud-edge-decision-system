@@ -4,7 +4,7 @@ flowchart TB
     B -->|低置信度/需复核| D[Controller / Scheduler]
     D -->|云端可用且满足 deadline| E[Toxiproxy / tc-netem]
     E --> F[Cloud Inference]
-    D -->|后续扩展| G[Peer Edge]
+    D -->|健康且满足 deadline| G[Peer Edge]
     D -->|远端不可用| H[EDGE_FALLBACK]
     C --> I[最终决策]
     F --> I

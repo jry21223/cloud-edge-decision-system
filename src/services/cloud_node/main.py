@@ -3,14 +3,22 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from common.recorder_client import record_event
+from common.recorder_client import flush_pending_events, record_event
 from common.schemas import InferenceResult, TaskRequest
 from services.cloud_node.core import infer_industrial, infer_traffic
 
-app = FastAPI(title="Cloud-Edge MVP - Cloud Node", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    yield
+    await flush_pending_events()
+
+
+app = FastAPI(title="Cloud-Edge MVP - Cloud Node", version="0.1.0", lifespan=lifespan)
 DELAY_MS = int(os.getenv("CLOUD_INFERENCE_DELAY_MS", "350"))
 
 

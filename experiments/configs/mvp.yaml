@@ -1,13 +1,23 @@
-name: mvp-v0.1
+name: dream-ce-v0.2
+algorithm: DREAM-CE
 local_confidence_threshold: 0.80
+freshness_half_life_s: 5.0
+minimum_consensus: 0.60
 cloud_timeout_ms: 800
 cloud_inference_delay_ms: 350
 scenarios:
   - industrial
+  - traffic
 routes:
   - EDGE
+  - PEER_EDGE
   - CLOUD
   - EDGE_FALLBACK
   - EDGE_SAFETY
+network_stress:
+  rtt_ms: [20, 100, 300, 500]
+  packet_loss: [0.0, 0.01, 0.05, 0.10]
+  outage_s: [0, 5, 10, 30]
 notes: >-
-  仅用于系统集成验证，不用于报告真实模型性能。
+  该配置用于DREAM-CE系统与算法联调。真实准确率、能力保留率和仲裁成功率
+  必须由MIMII/CityFlow及带真值的冲突回放实验产生，不能由规则样例替代。

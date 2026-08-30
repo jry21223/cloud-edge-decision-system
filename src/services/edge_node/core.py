@@ -5,7 +5,9 @@ import os
 import time
 from typing import Any
 
+from common.adaptive_policy import dynamic_local_threshold
 from common.schemas import InferenceResult, Route, TaskRequest
+from services.edge_node.llm_adapter import maybe_llm_inference
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +94,22 @@ def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
     else:
         prediction, action, reason, confidence = _industrial_inference(task.payload)
 
+    # Deterministic rules are the safety guard. An optional local LLM can refine
+    # non-critical decisions, but it cannot override a rule-triggered emergency.
+    is_rule_emergency = prediction in {"critical", "incident"}
+    requires_immediate_safety = is_rule_emergency or task.risk_level == "critical"
+    llm_result = None if requires_immediate_safety else maybe_llm_inference(task)
+    model_name = "edge-rule-model-v0.1"
+    if llm_result is not None:
+        prediction = llm_result.prediction
+        action = llm_result.action
+        confidence = min(confidence, llm_result.confidence)
+        reason = f"{reason}; local LLM: {llm_result.reason}"
+        model_name = f"{llm_result.model_name}+rule-confidence-guard"
+        if prediction in {"critical", "incident"}:
+            action = safety_action_for(task.scene)
+            reason = f"{reason}; model emergency label forced to local safety action"
+
     allow_test_controls = os.getenv("ALLOW_TEST_CONTROLS", "false").lower() == "true"
     if allow_test_controls and "force_confidence" in task.metadata:
         confidence = _clamp(float(task.metadata["force_confidence"]), 0.0, 1.0)
@@ -105,7 +123,7 @@ def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
         action=action,
         reason=reason,
         latency_ms=round(elapsed_ms, 3),
-        model_name="edge-rule-model-v0.1",
+        model_name=model_name,
         node_id=node_id,
     )
 
@@ -113,7 +131,12 @@ def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
 def choose_local_route(task: TaskRequest, result: InferenceResult, threshold: float) -> Route | None:
     if task.risk_level == "critical" or result.prediction in {"critical", "incident"}:
         return Route.EDGE_SAFETY
-    if result.confidence >= threshold:
+    adaptive_threshold = dynamic_local_threshold(
+        task,
+        base_threshold=threshold,
+        elapsed_ms=result.latency_ms,
+    )
+    if result.confidence >= adaptive_threshold:
         return Route.EDGE
     return None
 
