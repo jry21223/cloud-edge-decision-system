@@ -30,6 +30,11 @@ services:
       RECORDER_URL: http://recorder:8000
       CONTROLLER_URL: http://controller:8000
       CLOUD_INFERENCE_DELAY_MS: ${CLOUD_INFERENCE_DELAY_MS:-350}
+      CLOUD_VISION_BACKEND: ${CLOUD_VISION_BACKEND:-simulation}
+      CLOUD_VLM_ENDPOINT: ${CLOUD_VLM_ENDPOINT:-}
+      CLOUD_VLM_MODEL: ${CLOUD_VLM_MODEL:-}
+      CLOUD_VLM_API_KEY: ${CLOUD_VLM_API_KEY:-}
+      CLOUD_VLM_DATA_EXPORT_APPROVED: ${CLOUD_VLM_DATA_EXPORT_APPROVED:-false}
       HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-2}
       NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
     depends_on:
@@ -72,10 +77,10 @@ services:
       CLOUD_URL: http://toxiproxy:8666
       RECORDER_URL: http://recorder:8000
       CLOUD_TIMEOUT_MS: ${CLOUD_TIMEOUT_MS:-800}
-      PEER_ENABLED: ${PEER_ENABLED:-true}
+      PEER_ENABLED: ${PEER_ENABLED:-false}
       PEER_TIMEOUT_MS: ${PEER_TIMEOUT_MS:-400}
       NODE_TTL_SECONDS: ${NODE_TTL_SECONDS:-15}
-      TRUSTED_NODE_ENDPOINTS: edge-a=http://edge-a:8000,edge-b=http://edge-b:8000,cloud-node=
+      TRUSTED_NODE_ENDPOINTS: edge-a=http://edge-a:8000,cloud-node=
       NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
       FUSION_STATE_DB: /state/fusion.db
     volumes:
@@ -104,10 +109,25 @@ services:
       LOCAL_CONFIDENCE_THRESHOLD: ${LOCAL_CONFIDENCE_THRESHOLD:-0.80}
       HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-2}
       ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-false}
+      EDGE_VISION_BACKEND: ${EDGE_VISION_BACKEND:-simulation}
+      INDUSTRIAL_VISION_PROFILE: ${INDUSTRIAL_VISION_PROFILE:-/app/configs/industrial-vision-profile.json}
+      YOLO_ONNX_PATH: ${YOLO_ONNX_PATH:-/app/models/artifacts/yolo-defects-nms.onnx}
+      YOLO_INPUT_NAME: ${YOLO_INPUT_NAME:-images}
+      YOLO_OUTPUT_NAME: ${YOLO_OUTPUT_NAME:-detections}
+      YOLO_INPUT_SIZE: ${YOLO_INPUT_SIZE:-640}
+      YOLO_SCORE_THRESHOLD: ${YOLO_SCORE_THRESHOLD:-0.50}
+      EFFICIENTAD_ONNX_PATH: ${EFFICIENTAD_ONNX_PATH:-/app/models/artifacts/efficientad.onnx}
+      EFFICIENTAD_INPUT_NAME: ${EFFICIENTAD_INPUT_NAME:-images}
+      EFFICIENTAD_SCORE_OUTPUT: ${EFFICIENTAD_SCORE_OUTPUT:-anomaly_score}
+      EFFICIENTAD_MAP_OUTPUT: ${EFFICIENTAD_MAP_OUTPUT:-anomaly_map}
+      EFFICIENTAD_INPUT_SIZE: ${EFFICIENTAD_INPUT_SIZE:-256}
+      EFFICIENTAD_SCORE_THRESHOLD: ${EFFICIENTAD_SCORE_THRESHOLD:-0.60}
+      EFFICIENTAD_MAP_THRESHOLD: ${EFFICIENTAD_MAP_THRESHOLD:-0.60}
       NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
       EDGE_STATE_DB: /state/edge.db
     volumes:
       - edge-a-state:/state
+      - ${MODEL_ARTIFACTS_DIR:-./models/artifacts}:/app/models/artifacts:ro
     depends_on:
       controller:
         condition: service_healthy
@@ -115,32 +135,6 @@ services:
         condition: service_healthy
     ports:
       - "8001:8000"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  edge-b:
-    <<: *app-base
-    command: uvicorn services.edge_node.main:app --host 0.0.0.0 --port 8000
-    environment:
-      NODE_ID: edge-b
-      NODE_ENDPOINT_URL: http://edge-b:8000
-      CONTROLLER_URL: http://controller:8000
-      RECORDER_URL: http://recorder:8000
-      LOCAL_CONFIDENCE_THRESHOLD: ${LOCAL_CONFIDENCE_THRESHOLD:-0.80}
-      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-2}
-      ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-false}
-      NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
-      EDGE_STATE_DB: /state/edge.db
-    volumes:
-      - edge-b-state:/state
-    depends_on:
-      controller:
-        condition: service_healthy
-      recorder:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s
@@ -166,4 +160,3 @@ volumes:
   metrics-data:
   controller-fusion-state:
   edge-a-state:
-  edge-b-state:

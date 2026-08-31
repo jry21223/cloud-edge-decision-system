@@ -14,17 +14,13 @@ from fastapi import FastAPI, Header, HTTPException
 from common.recorder_client import flush_pending_events, record_event
 from common.schemas import InferenceResult, NodeHeartbeat, TaskRequest
 from common.telemetry import RuntimeTelemetry
-from common.vision import ClassicalVisionAdapter
+from common.vision_runtime import build_cloud_vision_adapter
 from services.cloud_node.core import infer_industrial, infer_traffic
 
 DELAY_MS = int(os.getenv("CLOUD_INFERENCE_DELAY_MS", "350"))
 CONTROLLER_URL = os.getenv("CONTROLLER_URL", "http://localhost:8002").rstrip("/")
 HEARTBEAT_INTERVAL_SECONDS = float(os.getenv("HEARTBEAT_INTERVAL_SECONDS", "2"))
-_VISION_ADAPTER = ClassicalVisionAdapter(
-    anomaly_threshold=0.24,
-    name="classical-cloud-review-baseline",
-    version="v1",
-)
+_VISION_ADAPTER = build_cloud_vision_adapter()
 _IDEMPOTENCY_CACHE_LIMIT = 2048
 _idempotency_cache: dict[str, InferenceResult] = {}
 _inflight: dict[str, asyncio.Task[InferenceResult]] = {}

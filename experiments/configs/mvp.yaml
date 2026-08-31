@@ -1,4 +1,4 @@
-name: dream-ce-v0.2
+name: dream-ce-edge-cloud-v0.3
 algorithm: DREAM-CE
 local_confidence_threshold: 0.80
 freshness_half_life_s: 5.0
@@ -10,7 +10,6 @@ scenarios:
   - traffic
 routes:
   - EDGE
-  - PEER_EDGE
   - CLOUD
   - EDGE_FALLBACK
   - EDGE_SAFETY
@@ -19,5 +18,5 @@ network_stress:
   packet_loss: [0.0, 0.01, 0.05, 0.10]
   outage_s: [0, 5, 10, 30]
 notes: >-
-  该配置用于DREAM-CE系统与算法联调。真实准确率、能力保留率和仲裁成功率
-  必须由MIMII/CityFlow及带真值的冲突回放实验产生，不能由规则样例替代。
+  该配置用于默认 Edge-Controller-Cloud MVP 联调。真实工业视觉准确率必须由
+  有许可的金属工件数据、冻结模型与 Ground Truth 产生，不能由规则样例替代。

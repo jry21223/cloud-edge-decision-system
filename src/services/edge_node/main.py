@@ -156,6 +156,7 @@ async def edge_fallback_response(
     trigger_reason: str,
     outbox_id: str | None = None,
     upload_mode: UploadMode | None = None,
+    attempted_routes: list[Route] | None = None,
 ) -> DecisionResponse:
     prediction, action, confidence, fallback_reason = conservative_fallback(task, edge_result)
     total_latency_ms = round((time.perf_counter() - started) * 1000, 3)
@@ -171,6 +172,7 @@ async def edge_fallback_response(
         edge_result=edge_result,
         upload_mode=upload_mode,
         outbox_id=outbox_id,
+        attempted_routes=attempted_routes or [],
         degraded=True,
         total_latency_ms=total_latency_ms,
         deadline_met=total_latency_ms <= task.deadline_ms,
@@ -428,11 +430,13 @@ async def _process_vision_task(
             trigger_reason=f"DREAM-Route 选择本地回退：{plan.decision_reason}",
         )
 
-    # Vision tasks use the multi-Peer DREAM-Fuse path by default. Set
-    # ``fusion_required=false`` only for an explicit single-target experiment.
-    fusion_required = bool(task.metadata.get("fusion_required", True))
+    # Peer/DREAM-Fuse is an explicit later extension, never an MVP default.
+    fusion_required = bool(task.metadata.get("fusion_required", False))
+    attempted_routes: list[Route] = []
     if fusion_required:
         peer_candidates = [item for item in remote_candidates if item.route == Route.PEER_EDGE]
+        if peer_candidates:
+            attempted_routes.append(Route.PEER_EDGE)
         peer_calls = [
             _call_remote_candidate(task, edge_result, item, started=started)
             for item in peer_candidates
@@ -463,6 +467,7 @@ async def _process_vision_task(
                 edge_result=edge_result,
                 peer_result=chosen_peer,
                 arbitration=arbitration,
+                attempted_routes=attempted_routes,
                 degraded=False,
                 total_latency_ms=total_latency_ms,
                 deadline_met=total_latency_ms <= task.deadline_ms,
@@ -478,6 +483,8 @@ async def _process_vision_task(
         remote_candidates = [item for item in remote_candidates if item.route == Route.CLOUD]
 
     for candidate in remote_candidates:
+        if candidate.route not in attempted_routes:
+            attempted_routes.append(candidate.route)
         attempt = await _call_remote_candidate(task, edge_result, candidate, started=started)
         if attempt is None:
             continue
@@ -500,6 +507,7 @@ async def _process_vision_task(
             peer_result=remote_result if candidate.route == Route.PEER_EDGE else None,
             upload_mode=candidate.upload_mode,
             uploaded_bytes=uploaded_bytes,
+            attempted_routes=attempted_routes,
             degraded=False,
             total_latency_ms=total_latency_ms,
             deadline_met=total_latency_ms <= task.deadline_ms,
@@ -521,6 +529,7 @@ async def _process_vision_task(
         trigger_reason="所有视觉远端路径均不可用或超时；现场动作已冻结",
         outbox_id=outbox_id,
         upload_mode=upload_mode,
+        attempted_routes=attempted_routes,
     )
 
 

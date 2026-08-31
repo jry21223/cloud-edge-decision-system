@@ -1,0 +1,11 @@
+{
+  "workpiece_type": "machined-metal-bracket",
+  "material": "metal",
+  "defect_labels": [
+    "scratch",
+    "crack",
+    "pit_or_wear",
+    "contamination",
+    "missing_or_assembly"
+  ]
+}

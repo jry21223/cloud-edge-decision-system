@@ -7,11 +7,11 @@ from typing import Any
 
 from common.adaptive_policy import dynamic_local_threshold
 from common.schemas import InferenceResult, Route, TaskRequest
-from common.vision import ClassicalVisionAdapter
+from common.vision_runtime import build_edge_vision_adapter
 from services.edge_node.llm_adapter import maybe_llm_inference
 
 logger = logging.getLogger(__name__)
-_VISION_ADAPTER = ClassicalVisionAdapter()
+_VISION_ADAPTER = build_edge_vision_adapter()
 
 
 def _clamp(value: float, low: float, high: float) -> float:
