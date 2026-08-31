@@ -4,7 +4,7 @@
 
 - [x] 边缘优先架构定稿
 - [x] 单边缘节点 MVP
-- [x] 四条核心调度路径
+- [x] 五类核心调度路径的代码与冒烟案例
 - [x] SQLite 指标记录
 - [x] Docker Compose 方案
 
@@ -13,7 +13,7 @@
 - [ ] Toxiproxy 延迟配置脚本
 - [ ] 100ms / 300ms 延迟实验
 - [ ] 丢包和断网实验
-- [ ] deadline 与超时边界测试
+- [x] deadline 与顺序远端尝试的超时边界测试
 - [ ] 弱网业务完成率统计
 
 ## P2 — 真实模型
@@ -26,11 +26,11 @@
 
 ## P3 — 多边缘节点
 
-- [ ] Node Registry 与心跳
-- [ ] Peer Edge 中央选择
-- [ ] hop_count 与 visited_nodes
+- [x] Node Registry 与心跳
+- [x] Peer Edge 中央选择
+- [x] hop_count 与 visited_nodes
 - [ ] 冲突数据生成器
-- [ ] 冲突仲裁与指标
+- [x] 冲突仲裁与指标代码骨架
 
 ## P4 — 第二场景与正式展示
 

@@ -1,0 +1,126 @@
+{
+  "scope": "synthetic final-container integration, not industrial accuracy evidence",
+  "healthy_nodes": [
+    "cloud-node",
+    "edge-a",
+    "edge-b"
+  ],
+  "vision": {
+    "provenance": "synthetic_demo",
+    "decision": {
+      "task_id": "p0-final-741b7a90f03e4b47825efcb140722cd2",
+      "trace_id": "df1d6112-2e72-486b-8309-1f2eb5b4d982",
+      "association_id": "p0-final-741b7a90f03e4b47825efcb140722cd2",
+      "route": "PEER_EDGE",
+      "final_prediction": "normal",
+      "final_action": "continue",
+      "final_confidence": 0.785436,
+      "decision_reason": "DREAM-Fuse selected the strongest calibrated multi-edge evidence",
+      "edge_result": {
+        "prediction": "unknown_anomaly",
+        "confidence": 0.55,
+        "action": "isolate",
+        "reason": "经典像素基线定位到偏离背景分布的疑似缺陷区域；测试控制 force_confidence 已应用",
+        "latency_ms": 44.746,
+        "model_name": "classical-vision-baseline",
+        "node_id": "edge-a",
+        "model_version": "v1",
+        "preprocess_version": "rgb-gray-512-v1",
+        "detections": [
+          {
+            "label": "unknown_anomaly",
+            "score": 1,
+            "bbox": {
+              "x": 112,
+              "y": 74,
+              "width": 95,
+              "height": 83
+            },
+            "severity": "high"
+          }
+        ],
+        "image_quality": {
+          "brightness": 0.534817,
+          "contrast": 0.396335,
+          "sharpness": 0.128822,
+          "passed": true,
+          "reasons": []
+        },
+        "anomaly_score": 1,
+        "scene_complexity": 0.151825
+      },
+      "cloud_result": null,
+      "peer_result": {
+        "prediction": "normal",
+        "confidence": 0.94,
+        "action": "continue",
+        "reason": "经典像素基线未定位到超过阈值的异常区域",
+        "latency_ms": 23.265,
+        "model_name": "classical-vision-baseline",
+        "node_id": "edge-b",
+        "model_version": "v1",
+        "preprocess_version": "rgb-gray-512-v1",
+        "detections": [],
+        "image_quality": {
+          "brightness": 0.775848,
+          "contrast": 0.639591,
+          "sharpness": 0.267311,
+          "passed": true,
+          "reasons": []
+        },
+        "anomaly_score": 0,
+        "scene_complexity": 0.214627
+      },
+      "arbitration": {
+        "task_id": "p0-final-741b7a90f03e4b47825efcb140722cd2",
+        "route": "PEER_EDGE",
+        "chosen_node": "edge-b",
+        "final_prediction": "normal",
+        "final_action": "continue",
+        "final_confidence": 0.785436,
+        "conflict": true,
+        "resolution_success": true,
+        "resolution_reason": "DREAM-Fuse selected the strongest calibrated multi-edge evidence",
+        "consensus_score": 0.630873,
+        "requires_cloud_review": false,
+        "evidence_scores": {
+          "normal|continue": 0.630873,
+          "unknown_anomaly|isolate": 0.369127
+        },
+        "association_id": "p0-final-741b7a90f03e4b47825efcb140722cd2",
+        "duplicate_proposals": 0,
+        "late_proposals_ignored": 0,
+        "idempotent_replay": false
+      },
+      "upload_mode": null,
+      "uploaded_bytes": 0,
+      "outbox_id": null,
+      "degraded": false,
+      "total_latency_ms": 152.815,
+      "deadline_met": true,
+      "attempted_routes": []
+    },
+    "identical_retry": true
+  },
+  "offline_critical_guard": [
+    {
+      "scene": "industrial",
+      "route": "EDGE_FALLBACK",
+      "action": "shutdown",
+      "attempted_routes": [
+        "CLOUD"
+      ],
+      "latency_ms": 14.404
+    },
+    {
+      "scene": "traffic",
+      "route": "EDGE_FALLBACK",
+      "action": "close_lane",
+      "attempted_routes": [
+        "CLOUD"
+      ],
+      "latency_ms": 14.991
+    }
+  ],
+  "proxy_restored": true
+}

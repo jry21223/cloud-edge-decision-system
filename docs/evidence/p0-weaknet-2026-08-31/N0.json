@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-30T23:53:20.940977+00:00",
+  "configuration": {
+    "url": "http://localhost:8002/v1/escalate",
+    "request_count": 6,
+    "concurrency": 2,
+    "scene": "industrial",
+    "deadline_ms": 500,
+    "timeout_ms": 1200,
+    "fault_profile": "N0",
+    "workload_mode": "controller_cloud"
+  },
+  "measurement_notes": {
+    "latency_scope": "client POST start through complete response body; semaphore wait excluded",
+    "byte_scope": "HTTP request and response body bytes; protocol headers excluded",
+    "deadline_rate_definition": "successful responses within deadline / all requests",
+    "network_fault_injection": "not performed by this runner",
+    "externally_applied_fault_profile": "N0"
+  },
+  "summary": {
+    "total_requests": 6,
+    "successful_requests": 6,
+    "failed_requests": 0,
+    "success_rate": 1,
+    "deadline_met_requests": 6,
+    "deadline_met_rate": 1,
+    "route_distribution": {
+      "CLOUD": 6
+    },
+    "request_bytes_total": 2924,
+    "response_bytes_total": 6686,
+    "traffic_bytes_total": 9610,
+    "elapsed_s": 3.722379,
+    "throughput_rps": 1.6118724074359534,
+    "successful_throughput_rps": 1.6118724074359534,
+    "latency_ms": {
+      "count": 6,
+      "mean": 448.25265,
+      "p50": 446.6195,
+      "p95": 477.3725,
+      "p99": 482.55954
+    },
+    "cloud_path_attempted_requests": 6,
+    "business_retention": {
+      "eligible_tasks": 6,
+      "retained_tasks": 6,
+      "rate": 1,
+      "definition": "valid scene action returned within deadline / all injected tasks"
+    },
+    "safety": {
+      "severe_tasks": 2,
+      "severe_misses": 0,
+      "severe_miss_rate": 0,
+      "normal_tasks": 2,
+      "false_isolations": 0,
+      "false_isolation_rate": 0,
+      "action_labeled_tasks": 6,
+      "action_matches": 6,
+      "action_match_rate": 1
+    }
+  },
+  "requests": [
+    {
+      "index": 0,
+      "success": true,
+      "latency_ms": 420.6235,
+      "route": "CLOUD",
+      "request_bytes": 483,
+      "response_bytes": 1105,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "normal",
+      "risk_level": "low",
+      "final_prediction": "normal",
+      "final_action": "continue",
+      "expected_action": "continue",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 1,
+      "success": true,
+      "latency_ms": 433.876,
+      "route": "CLOUD",
+      "request_bytes": 488,
+      "response_bytes": 1102,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "warning",
+      "risk_level": "medium",
+      "final_prediction": "warning",
+      "final_action": "inspect",
+      "expected_action": "inspect",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 2,
+      "success": true,
+      "latency_ms": 439.758,
+      "route": "CLOUD",
+      "request_bytes": 491,
+      "response_bytes": 1136,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "critical",
+      "risk_level": "critical",
+      "final_prediction": "critical",
+      "final_action": "shutdown",
+      "expected_action": "shutdown",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 3,
+      "success": true,
+      "latency_ms": 453.481,
+      "route": "CLOUD",
+      "request_bytes": 483,
+      "response_bytes": 1105,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "normal",
+      "risk_level": "low",
+      "final_prediction": "normal",
+      "final_action": "continue",
+      "expected_action": "continue",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 4,
+      "success": true,
+      "latency_ms": 483.8563,
+      "route": "CLOUD",
+      "request_bytes": 488,
+      "response_bytes": 1102,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "warning",
+      "risk_level": "medium",
+      "final_prediction": "warning",
+      "final_action": "inspect",
+      "expected_action": "inspect",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 5,
+      "success": true,
+      "latency_ms": 457.9211,
+      "route": "CLOUD",
+      "request_bytes": 491,
+      "response_bytes": 1136,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "critical",
+      "risk_level": "critical",
+      "final_prediction": "critical",
+      "final_action": "shutdown",
+      "expected_action": "shutdown",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    }
+  ],
+  "fault_profile": {
+    "name": "N0",
+    "enabled": true,
+    "toxics": [],
+    "interpretation": "proxy enabled; no added fault",
+    "applied_proxy_state": {
+      "name": "cloud",
+      "listen": "[::]:8666",
+      "upstream": "cloud-node:8000",
+      "enabled": true,
+      "Logger": {},
+      "toxics": []
+    }
+  }
+}

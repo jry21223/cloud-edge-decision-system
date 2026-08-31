@@ -5,9 +5,13 @@ import os
 import time
 from typing import Any
 
+from common.adaptive_policy import dynamic_local_threshold
 from common.schemas import InferenceResult, Route, TaskRequest
+from common.vision import ClassicalVisionAdapter
+from services.edge_node.llm_adapter import maybe_llm_inference
 
 logger = logging.getLogger(__name__)
+_VISION_ADAPTER = ClassicalVisionAdapter()
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -87,10 +91,39 @@ def _traffic_inference(payload: dict[str, Any]) -> tuple[str, str, str, float]:
 
 def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
     started = time.perf_counter()
+    if task.image is not None:
+        result = _VISION_ADAPTER.infer(task, node_id=node_id)
+        allow_test_controls = os.getenv("ALLOW_TEST_CONTROLS", "false").lower() == "true"
+        if allow_test_controls and "force_confidence" in task.metadata:
+            confidence = _clamp(float(task.metadata["force_confidence"]), 0.0, 1.0)
+            logger.warning("test control applied: task_id=%s control=force_confidence", task.task_id)
+            return result.model_copy(
+                update={
+                    "confidence": confidence,
+                    "reason": f"{result.reason}；测试控制 force_confidence 已应用",
+                }
+            )
+        return result
     if task.scene == "traffic":
         prediction, action, reason, confidence = _traffic_inference(task.payload)
     else:
         prediction, action, reason, confidence = _industrial_inference(task.payload)
+
+    # Deterministic rules are the safety guard. An optional local LLM can refine
+    # non-critical decisions, but it cannot override a rule-triggered emergency.
+    is_rule_emergency = prediction in {"critical", "incident"}
+    requires_immediate_safety = is_rule_emergency or task.risk_level == "critical"
+    llm_result = None if requires_immediate_safety else maybe_llm_inference(task)
+    model_name = "edge-rule-model-v0.1"
+    if llm_result is not None:
+        prediction = llm_result.prediction
+        action = llm_result.action
+        confidence = min(confidence, llm_result.confidence)
+        reason = f"{reason}; local LLM: {llm_result.reason}"
+        model_name = f"{llm_result.model_name}+rule-confidence-guard"
+        if prediction in {"critical", "incident"}:
+            action = safety_action_for(task.scene)
+            reason = f"{reason}; model emergency label forced to local safety action"
 
     allow_test_controls = os.getenv("ALLOW_TEST_CONTROLS", "false").lower() == "true"
     if allow_test_controls and "force_confidence" in task.metadata:
@@ -105,7 +138,7 @@ def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
         action=action,
         reason=reason,
         latency_ms=round(elapsed_ms, 3),
-        model_name="edge-rule-model-v0.1",
+        model_name=model_name,
         node_id=node_id,
     )
 
@@ -113,7 +146,12 @@ def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
 def choose_local_route(task: TaskRequest, result: InferenceResult, threshold: float) -> Route | None:
     if task.risk_level == "critical" or result.prediction in {"critical", "incident"}:
         return Route.EDGE_SAFETY
-    if result.confidence >= threshold:
+    adaptive_threshold = dynamic_local_threshold(
+        task,
+        base_threshold=threshold,
+        elapsed_ms=result.latency_ms,
+    )
+    if result.confidence >= adaptive_threshold:
         return Route.EDGE
     return None
 

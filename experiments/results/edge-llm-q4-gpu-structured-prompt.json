@@ -1,0 +1,23 @@
+{
+  "model_path": "models\\artifacts\\deepseek-r1-distill-qwen-1.5b-q4_0\\deepseek-r1-distill-qwen-1.5b-q4_0.gguf",
+  "model_file_size_mb": 1016.83,
+  "context_tokens": 512,
+  "max_output_tokens": 48,
+  "warmup_tokens": 8,
+  "warmup_generation_ms": 55319.26,
+  "gpu_layers": -1,
+  "threads": null,
+  "model_load_ms": 956.76,
+  "prompt_tokens": 46,
+  "generated_tokens": 48,
+  "ttft_ms": 6.95,
+  "generation_ms": 254.74,
+  "generated_tokens_per_second": 188.427,
+  "process_rss_before_mb": 192.32,
+  "process_rss_peak_mb": 1791.52,
+  "process_rss_after_mb": 1553.61,
+  "nvidia_used_memory_before_mb": 2427.0,
+  "nvidia_used_memory_peak_mb": 3808.0,
+  "nvidia_used_memory_after_mb": 3729.0,
+  "output": ".\n\nThe scene is described as industrial, and the sensor data includes temperature, vibration, current, and bearing noise. The task is to determine the type of defect that could be indicated by these sensor readings. The options are: A) Deep"
+}

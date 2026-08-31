@@ -105,7 +105,7 @@ J(route) = w1*预计时延 + w2*错误风险 + w3*通信成本 + w4*节点负载
 - 采用中央 Node Registry 和心跳，不使用自由广播发现。
 - 所有 Peer 转发由 Controller 发起。
 - hop_count 最大为 1；visited_nodes 防重复。
-- task_id 用于幂等；每个任务有固定 deadline。
+- task_id 作为后续持久化幂等键；当前每个任务已有固定 deadline，去重存储尚待实现。
 - 仲裁顺序：高风险优先 → 高置信度优先 → 云端裁决 → 保守策略。
 
 ## 6. 技术栈
@@ -192,7 +192,8 @@ cloud-edge-decision/
 
 ## 13. MVP v0.1 实现与仓库交付状态
 
-已完成单边缘节点 MVP，并初始化独立 Git 仓库。首个提交：`236bdb9`。
+已完成由单边缘 MVP 扩展出的双 Edge 协同算法原型，并整合到独立 Git 仓库。历史文档曾引用
+`236bdb9`，该提交不在当前仓库历史中，不能作为当前实现的证据。
 
 ### 已实现
 
@@ -202,18 +203,23 @@ cloud-edge-decision/
 - Recorder：SQLite 事件日志；
 - Dashboard：路由统计和最近决策；
 - Toxiproxy：Docker Compose 中的云端链路故障注入；
-- 测试：7 个单元测试通过，真实多进程集成测试四条路径通过。
+- 测试：当前自动化测试套件覆盖 deadline、Peer、仲裁、Recorder 和压力统计；准确数量及环境
+  以 [提交状态与证据清单](SUBMISSION_STATUS_2026-08-30.md) 为准。
 
-### 四条已验证路径
+### 五类目标路径
 
 1. 高 confidence、低风险 → `EDGE`；
 2. 低 confidence、云端可用 → `CLOUD`；
-3. 低 confidence、云端不可用 → `EDGE_FALLBACK`；
-4. critical 风险 → `EDGE_SAFETY`。
+3. 低 confidence、健康 Peer 更优 → `PEER_EDGE`；
+4. 低 confidence、远端不可行 → `EDGE_FALLBACK`；
+5. critical 风险 → `EDGE_SAFETY`。
+
+五类路径已由单元逻辑和冒烟脚本覆盖；当前 commit 的 Docker Compose 实际运行仍待 Docker
+daemon 启动后验证，不能引用 7 月历史记录代替。
 
 ### 仓库规范
 
-仓库已包含 `README.md`、`docs/ROADMAP.md`、架构/实现/API/测试/周报文档、ADR、GitHub Actions、Issue/PR 模板和 Docker Compose。当前执行环境未安装 Docker，因此容器级启动和 Toxiproxy 需要在团队本机完成最终验证。
+仓库已包含 `README.md`、`docs/ROADMAP.md`、架构/实现/API/测试/阶段状态、ADR、GitHub Actions、Issue/PR 模板和 Docker Compose。当前开发机已安装 Docker Client，但 daemon 未运行，因此容器构建、Toxiproxy 和五路径冒烟仍需完成最终验证。
 
 ### 启动
 
@@ -227,4 +233,5 @@ Dashboard：`http://localhost:8080`。
 
 ### GitHub
 
-正式私有仓库已建立：`jry21223/cloud-edge-decision-system`。MVP、Roadmap、系统设计、ADR、测试与 CI 已写入 `main`。
+正式仓库：`jry21223/cloud-edge-decision-system`。本次整合内容先通过独立分支和 PR 提交，只有
+PR 合并后才属于 `main`。

@@ -1,5 +1,37 @@
 # Weekly Status
 
+## 2026-08-24 至 2026-08-30
+
+### 本周完成
+
+- [x] 将 DREAM-Exit、DREAM-Route 和 DREAM-Fuse 算法骨架接入仓库；
+- [x] 增加双 Edge 心跳、Peer 一跳路由、deadline 实时预算和确定性保守降级；
+- [x] 将 Recorder 指标写入改为业务响应外的 best-effort 异步投递；
+- [x] 增加五路径冒烟设计和客户端并发压力测量 runner；
+- [x] 整合工业视觉主线、个人算法报告、压力测试口径与提交状态文档；
+- [x] 提交脱敏模型单次原始观测，并明确复现与指标声明边界。
+
+### 当前验证
+
+- 自动化测试与 Ruff 以 [提交状态与证据清单](SUBMISSION_STATUS_2026-08-30.md) 的最新记录为准；
+- Docker Compose 基础/测试配置可解析；
+- 当前开发机 Docker daemon 未运行，因此尚未取得当前 commit 的容器冒烟输出、Recorder
+  summary 和 Dashboard 截图。
+
+### 仍未完成
+
+- [ ] 工业视觉和 CityFlow 真实模型/数据接入；
+- [ ] 正常、弱网、断网的可重复实验矩阵；
+- [ ] 带 ground truth 的冲突集与正确解决率实验；
+- [ ] 双场景 0.2s、业务保持率、冲突率、能力保持率、TTFT 与内存硬指标证据；
+- [ ] Adapter 约 17s 延迟的根因定位；
+- [ ] 当前 commit 的真实 Docker Compose 冒烟证据。
+
+### 下一步
+
+先启动 Docker Desktop，按 `docs/TEST_PLAN.md` 运行五路径冒烟与并发测量并保存原始结果；
+随后冻结工业视觉数据集和目标硬件，再运行双场景基线、弱网矩阵、冲突回放和消融实验。
+
 ## 2026-07-06 至 2026-07-12
 
 ### 本周目标
