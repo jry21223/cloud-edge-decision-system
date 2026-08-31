@@ -1,5 +1,8 @@
 # DREAM-CE：面向截止时间、风险与证据一致性的自适应云边协同算法
 
+> 范围说明：本文保留完整 DREAM-CE/Peer 研究设计。默认 MVP 仅启用 Edge–Cloud 候选；
+> Peer Edge 和 DREAM-Fuse 只属于 `compose.peer.yml` 后期扩展。
+
 ## 1. 定位
 
 DREAM-CE（Deadline, Risk and Evidence-Aware Multi-edge Cloud-Edge）面向工业视觉质量检测和

@@ -1,0 +1,43 @@
+services:
+  controller:
+    environment:
+      PEER_ENABLED: "true"
+      TRUSTED_NODE_ENDPOINTS: edge-a=http://edge-a:8000,edge-b=http://edge-b:8000,cloud-node=
+
+  edge-b:
+    build:
+      context: .
+    restart: unless-stopped
+    command: uvicorn services.edge_node.main:app --host 0.0.0.0 --port 8000
+    environment:
+      NODE_ID: edge-b
+      NODE_ENDPOINT_URL: http://edge-b:8000
+      CONTROLLER_URL: http://controller:8000
+      RECORDER_URL: http://recorder:8000
+      LOCAL_CONFIDENCE_THRESHOLD: ${LOCAL_CONFIDENCE_THRESHOLD:-0.80}
+      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-2}
+      ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-false}
+      EDGE_VISION_BACKEND: ${EDGE_VISION_BACKEND:-simulation}
+      INDUSTRIAL_VISION_PROFILE: ${INDUSTRIAL_VISION_PROFILE:-/app/configs/industrial-vision-profile.json}
+      YOLO_ONNX_PATH: ${YOLO_ONNX_PATH:-/app/models/artifacts/yolo-defects-nms.onnx}
+      EFFICIENTAD_ONNX_PATH: ${EFFICIENTAD_ONNX_PATH:-/app/models/artifacts/efficientad.onnx}
+      NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
+      EDGE_STATE_DB: /state/edge.db
+    volumes:
+      - edge-b-state:/state
+      - ${MODEL_ARTIFACTS_DIR:-./models/artifacts}:/app/models/artifacts:ro
+    depends_on:
+      controller:
+        condition: service_healthy
+      recorder:
+        condition: service_healthy
+    networks:
+      - cloud-edge-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  edge-b-state:

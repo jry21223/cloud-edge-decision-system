@@ -8,6 +8,10 @@
 >
 > 适用范围：工业零部件表面缺陷检测主场景
 
+> 2026-08-31 范围更新：默认 MVP 已收缩为 Edge–Controller–Cloud。Peer Edge/DREAM-Fuse
+> 仅保留为后期扩展；实时主线使用 YOLO + EfficientAD Adapter，Cloud VLM 只做结构化增强复核。
+> 当前仓库提供运行时与门禁但不携带真实权重或数据，详见 `SCOPE_ALIGNMENT_PLAN.md`。
+
 ## 1. 结论与边界
 
 系统采用“边缘自治、中央协同、云端增强、安全回退”的分支式架构：
@@ -17,17 +21,15 @@
 - 严重风险由 Edge 先执行隔离或报警，Cloud 只做异步复核；
 - 低置信、未知缺陷、边缘过载和多工位冲突任务才提交 Controller 选路；
 - Controller 只接收任务元数据和边缘推理摘要，不承载原始图像中转；
-- ROI 或必要原图由 Edge 按 Controller 返回的目标地址直传 Cloud 或 Peer Edge；
+- ROI 或必要原图由 Edge 按 Controller 返回的目标地址直传 Cloud；
 - Cloud 输出结构化复核结果，并将难例、阈值建议和模型版本反馈到边缘侧更新流程。
 
-当前仓库已经完成图像字节契约、可替换 `VisionModelAdapter`、质量门控、bbox/ROI、Controller
-纯选路接口、Edge 直传 Peer/Cloud、SQLite 单 worker 软件终态幂等与断网 outbox，以及视觉主链上的多 Peer
-DREAM-Fuse。为了不伪造模型效果，默认实现明确命名为 `ClassicalVisionAdapter`，它只用于验证
-真实图像字节和调度链路，不是经过工业数据训练的缺陷模型。
+当前仓库已经完成图像字节契约、五类缺陷 profile、YOLO+EfficientAD ONNX Adapter、可选 Cloud
+VLM 结构化复核、质量门控、bbox/ROI、Controller 纯选路、SQLite 软件终态与断网 outbox。
+默认 `simulation` 后端只验证真实图像字节和调度链路，不是经过工业数据训练的缺陷模型。
 
 以下涉及 PLC、跨工位关联、模型更新、磁盘淘汰和高精度模型的条目是目标设计；当前只冻结软件
-最终决策，没有现场执行器 ACK，也不宣称现场动作 exactly-once。P0 仲裁范围为单个 `task_id`
-的多 Peer 结果，而非自动跨工位聚合。
+最终决策，没有现场执行器 ACK，也不宣称现场动作 exactly-once。Peer 和跨工位仲裁均为后期扩展。
 
 仍需团队提供两类外部输入：有来源与许可的工业图像/真值，以及冻结的 ONNX/OpenVINO/TensorRT
 模型权重。没有这些证据前，仓库不能声称“真实工业模型准确率已验证”。
@@ -39,7 +41,7 @@ DREAM-Fuse。为了不伪造模型效果，默认实现明确命名为 `Classica
 - 单张图像或相机帧输入；
 - 图像质量检查、ROI 生成和轻量模型推理；
 - `PASS`、`REJECT`、`QUARANTINE`、`ALERT` 四类业务动作；
-- `EDGE`、`EDGE_SAFETY`、`CLOUD`、`PEER_EDGE`、`EDGE_FALLBACK` 五类执行路径；
+- `EDGE`、`EDGE_SAFETY`、`CLOUD`、`EDGE_FALLBACK` 四类 MVP 执行路径；
 - `METADATA`、`ROI`、`RAW` 三种上传粒度；
 - deadline、网络、节点负载、风险和模型不确定性的联合选路；
 - Cloud 超时、断网和 Controller 不可用时的保守回退；
@@ -66,9 +68,7 @@ flowchart LR
     EDGE -->|"升级元数据"| CTRL["Controller 控制平面"]
     CTRL -->|"RoutingDecision"| EDGE
     EDGE -->|"ROI / RAW 数据平面"| CLOUD["Cloud 复杂复核"]
-    EDGE -->|"ROI 数据平面"| PEER["Peer Edge"]
     CLOUD --> FINAL["FinalDecision"]
-    PEER --> FINAL
     FINAL --> ACT["执行接口"]
     EDGE -. "事件" .-> REC["Recorder / Evidence"]
     CTRL -. "事件" .-> REC
@@ -195,7 +195,9 @@ J(route) = wL * latency_ratio
 
 默认优先 `ROI`。ROI 应围绕 bbox 扩展 10%-20% 上下文，并裁剪到图像边界；如果 bbox 过小、目标分散或缺陷与全局装配关系相关，则升级为 `RAW`。具体扩展比例作为配置项并在实验中记录。
 
-### 5.3 Peer Edge 约束
+### 5.3 Peer Edge 扩展约束
+
+本节只适用于 `compose.peer.yml` 后期扩展，不属于默认 MVP：
 
 - 仅由 Controller 选择 Peer；
 - `hop_count <= 1`；
@@ -278,7 +280,7 @@ Cloud 输出使用受约束 JSON：
   "estimated_finish_ms": 104,
   "decision_reason": "uncertain_roi_cloud_within_deadline",
   "policy_version": "routing-v1",
-  "candidate_scores": {"CLOUD": 0.42, "PEER_EDGE": 0.58, "EDGE_FALLBACK": 0.91}
+  "candidate_scores": {"CLOUD": 0.42, "EDGE_FALLBACK": 0.91}
 }
 ```
 
@@ -408,7 +410,7 @@ workload，逐项校验 toxic 并断言每项任务确实尝试 Cloud；恢复�
 | P0 | 已完成（视觉路径） | `/v1/routes/decide` 只返回目标/上传模式，Edge 直传数据 | Controller 拒绝字节和本地引用；ROI 直传自动化通过 |
 | P0 | 已完成（单 worker 软件终态） | SQLite outbox、重试和任务级决策记录幂等 | 远端尝试失败后的恢复只补传复核证据，不覆盖冻结的软件决策；不包含 PLC exactly-once |
 | P0 | 已完成（在线采样） | Edge/Cloud 有界并发、CPU/RSS/GPU、队列、RTT/带宽 EWMA | 心跳/健康接口暴露运行时快照；GPU 不可用明确为 `null` |
-| P0 | 已完成（软件主链） | 视觉任务默认汇集可用 Peer 并调用 DREAM-Fuse | 任务级关联、身份校验、去重、绝对新鲜度、终态持久化与待复核隔离测试通过 |
+| 扩展 | 默认关闭 | Peer Edge 与 DREAM-Fuse 仅通过 `compose.peer.yml` 启用 | 不进入 MVP 主线指标或验收 |
 | P0 | runner 已完成，正式实测待冻结环境 | N0/RTT100/RTT300/BW5M/CF5/OFFLINE 与恢复测量 | runner 校验并恢复 toxic；正式重复实验结果不得预先声称达标 |
 | P1 | Cloud 仍是规则融合 | 增加高精度视觉 Adapter 和受约束结构化输出 | ROI 复核可替换模型且接口不变 |
 | P1 | Recorder 已有事件与事后真值接口 | 进一步补齐全链路阶段耗时和四组正式基线导出 | 真值不进入推理请求；使用独立标注的正式 CSV |

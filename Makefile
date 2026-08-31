@@ -4,7 +4,7 @@ install:
 	python -m pip install -r requirements-dev.txt
 
 test:
-	PYTHONPATH=src pytest -q
+	PYTHONPATH=.:src pytest -q
 
 lint:
 	ruff check src tests scripts

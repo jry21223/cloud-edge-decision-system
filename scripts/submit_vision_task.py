@@ -79,6 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-id")
     parser.add_argument("--trace-id")
     parser.add_argument("--workpiece-id")
+    parser.add_argument(
+        "--workpiece-type",
+        choices=("machined-metal-bracket",),
+        default="machined-metal-bracket",
+        help="frozen MVP metal workpiece profile",
+    )
     parser.add_argument("--station-id", default="demo-station")
     parser.add_argument("--batch-id", default="demo-batch")
     parser.add_argument("--frame-id")
@@ -156,7 +162,11 @@ def build_request(args: argparse.Namespace) -> tuple[dict[str, object], str]:
         "batch_id": args.batch_id,
         "captured_at": datetime.now(UTC).isoformat(),
         "payload": {},
-        "context": {"data_provenance": provenance_kind},
+        "context": {
+            "data_provenance": provenance_kind,
+            "material": "metal",
+            "workpiece_type": args.workpiece_type,
+        },
         "risk_level": args.risk_level,
         "deadline_ms": args.deadline_ms,
         "metadata": metadata,

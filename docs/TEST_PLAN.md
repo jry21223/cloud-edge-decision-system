@@ -43,17 +43,20 @@ python scripts/smoke_test.py
 
 ```text
 [PASS] 高置信度本地处理: EDGE
-[PASS] 低置信度远端协同: PEER_EDGE
 [PASS] 高风险边缘安全动作: EDGE_SAFETY
 [PASS] 独立云端增强路径: CLOUD
 [PASS] 云端断开本地降级: EDGE_FALLBACK
 ```
 
-冒烟脚本会等待两个 Edge 的心跳注册；若 Peer 尚未就绪，低置信度用例会降级验证
-`CLOUD`，同时脚本还会直接向 Controller 提交排除 Peer 的升级请求，独立覆盖云端路径。
-断网用例直接向 Controller 提交排除两个 Peer、deadline 足以完成正常 Cloud 调用的升级请求；
-脚本先读取 Toxiproxy 状态确认 Cloud 链路已关闭，再断言 `EDGE_FALLBACK`，从而隔离验证断网
-因果。Peer 未就绪、Toxiproxy 不可访问或链路不能恢复都会使脚本以非零状态退出，不允许跳过。
+默认冒烟只验证 Edge–Controller–Cloud 的四条 MVP 路径，不启动或等待 Peer。断网用例直接向
+Controller 提交 deadline 足以完成正常 Cloud 调用的升级请求；脚本先读取 Toxiproxy 状态确认
+Cloud 链路已关闭，再断言 `EDGE_FALLBACK`，从而隔离验证断网因果。Toxiproxy 不可访问或链路
+不能恢复都会使脚本以非零状态退出，不允许跳过。
+
+Peer 扩展必须叠加 `compose.peer.yml` 单独验证，结果不计入 MVP 主线验收。
+
+交通视觉迁移使用同一 Edge API、Controller、Cloud 和 Recorder 链路，并通过 Toxiproxy 注入
+1000ms Cloud 响应延迟，断言实际尝试 `CLOUD` 后进入 `EDGE_FALLBACK` 且决策事件可查询。
 
 ## 3. 容器不可用时的多终端启动
 
