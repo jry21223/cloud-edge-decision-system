@@ -89,15 +89,15 @@
 deadline；输出候选目标、`METADATA/ROI/RAW` 上传模式、timeout、候选得分及剔除原因。该接口
 不转发图像，也不调用 Peer/Cloud。
 
-当前视觉任务默认开启多 Peer 证据阶段：先收集计划中可行的 Peer 并仲裁，仍需复核时才尝试
-Cloud。因此单目标排名第一的 route 不一定等于最终 route；联合 Route/Fuse 策略的性能对照仍待完成。
+当前默认 MVP 只在 Cloud 与本地回退之间选路。Peer/Fuse 代码只有叠加 `compose.peer.yml` 才启用，
+不属于默认视觉任务或主线指标。
 
 ### `POST /v1/escalate`
 
 仅用于不含图像的兼容遥测任务。带 `image` 的请求返回 `422`，必须改用上述纯控制面的
-`/v1/routes/decide`，从接口层阻止 Controller 接收或代理视觉字节。Controller 使用 DREAM-Route 对满足剩余 deadline 的健康 Peer、Cloud
+`/v1/routes/decide`，从接口层阻止 Controller 接收或代理视觉字节。Controller 使用 DREAM-Route 对满足剩余 deadline 的 Cloud
 和本地保守降级统一评分，并按代价顺序有限尝试；每次远端尝试前重新计算剩余 deadline。
-Peer 只允许一跳且 `visited_nodes` 防环；所有可行远端路径不可用、超时或预算不足时返回
+所有可行远端路径不可用、超时或预算不足时返回
 `EDGE_FALLBACK`。响应中的 `attempted_routes` 记录实际尝试过的远端类型，供弱网实验核验请求
 确实经过 Cloud 代理；它不是完整分布式 trace。
 

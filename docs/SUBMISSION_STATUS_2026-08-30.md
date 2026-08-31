@@ -1,5 +1,9 @@
 # 2026-08-31 P0 提交状态与证据清单
 
+> 历史说明：本文记录 PR #7 合并前的候选范围，其中 Peer Edge 曾进入视觉主链。当前范围已由
+> `docs/SCOPE_ALIGNMENT_PLAN.md` 收缩为 Edge–Controller–Cloud；本文只作为历史证据，不再代表
+> 默认 MVP 边界。
+
 ## 结论
 
 P0 工程代码已经补齐：实际图像字节、经典视觉基线、ROI/RAW 直传、运行时遥测、任务级

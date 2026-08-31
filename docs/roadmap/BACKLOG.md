@@ -27,7 +27,7 @@
 ## P3 — 多边缘节点
 
 - [x] Node Registry 与心跳
-- [x] Peer Edge 中央选择
+- [x] Peer Edge 中央选择（后期扩展，默认关闭）
 - [x] hop_count 与 visited_nodes
 - [ ] 冲突数据生成器
 - [x] 冲突仲裁与指标代码骨架

@@ -4,9 +4,12 @@
 > 日期：2026-07-10  
 > 状态：架构定稿 / MVP v0.1 已实现
 
+> 当前范围以 `SCOPE_ALIGNMENT_PLAN.md` 为准：默认 MVP 为 Edge–Controller–Cloud；本文中的
+> Peer Edge、DREAM-Fuse 和多节点仲裁仅作为后期扩展设计。
+
 ## 一句话结论
 
-采用 **“边缘自治 + 中央协同调度 + 云端增强”** 的分层架构：传感器或客户端先将任务交给边缘节点；边缘端独立完成高置信度、低风险和紧急安全任务；只有低置信度、需要复核或本地过载的任务才请求中央调度器。调度器再依据网络、节点负载、任务风险和截止时间选择云端、其他边缘节点或本地降级路径。
+采用 **“边缘自治 + 中央协同调度 + 云端增强”** 的分层架构：传感器或客户端先将任务交给边缘节点；边缘端独立完成高置信度、低风险和紧急安全任务；只有低置信度、需要复核或本地过载的任务才请求中央调度器。默认调度器依据网络、任务风险和截止时间选择云端或本地降级路径。
 
 ## 1. 设计目标
 
@@ -25,11 +28,9 @@ flowchart TB
     B -->|低置信度/需复核/过载| D[Controller / Scheduler]
     D -->|云端可用且满足 deadline| E[Toxiproxy / tc-netem]
     E --> F[Cloud Inference / Arbitration]
-    D -->|Peer 可用| G[Peer Edge]
     D -->|远端不可用| H[EDGE_FALLBACK]
     C --> I[最终决策]
     F --> I
-    G --> I
     H --> I
     I --> J[日志、指标与 Dashboard]
     F -.规则/阈值/模型版本更新.-> B
@@ -39,7 +40,7 @@ flowchart TB
 
 - Client/Sensor 的首跳是 Edge，而不是 Controller。
 - Controller 是协同控制平面，不是所有请求的必经数据平面。
-- Edge 不自行递归转发；Peer Edge 由 Controller 统一选择。
+- 默认 MVP 不启用 Peer；后期扩展仍只能由 Controller 统一选择。
 - 第一阶段采用可解释规则调度，不引入强化学习。
 - 模型、云端供应方和场景均通过 Adapter 解耦。
 - 日志和指标从第一版开始建设。
@@ -58,7 +59,7 @@ flowchart TB
 ### Controller / Scheduler
 
 输入：edge_result、risk、deadline、network_state、node_state、cloud_state。  
-输出：EDGE、CLOUD、PEER_EDGE、EDGE_FALLBACK，以及 decision_reason。
+默认输出：EDGE、CLOUD、EDGE_FALLBACK，以及 decision_reason；PEER_EDGE 仅属于扩展。
 
 ### Cloud
 
@@ -192,7 +193,7 @@ cloud-edge-decision/
 
 ## 13. MVP v0.1 实现与仓库交付状态
 
-已完成由单边缘 MVP 扩展出的双 Edge 协同算法原型，并整合到独立 Git 仓库。历史文档曾引用
+已完成 Edge–Controller–Cloud 软件原型；双 Edge 协同代码保留为独立扩展。历史文档曾引用
 `236bdb9`，该提交不在当前仓库历史中，不能作为当前实现的证据。
 
 ### 已实现
@@ -206,20 +207,18 @@ cloud-edge-decision/
 - 测试：当前自动化测试套件覆盖 deadline、Peer、仲裁、Recorder 和压力统计；准确数量及环境
   以 [提交状态与证据清单](SUBMISSION_STATUS_2026-08-30.md) 为准。
 
-### 五类目标路径
+### 四类 MVP 目标路径
 
 1. 高 confidence、低风险 → `EDGE`；
 2. 低 confidence、云端可用 → `CLOUD`；
-3. 低 confidence、健康 Peer 更优 → `PEER_EDGE`；
-4. 低 confidence、远端不可行 → `EDGE_FALLBACK`；
-5. critical 风险 → `EDGE_SAFETY`。
+3. 低 confidence、远端不可行 → `EDGE_FALLBACK`；
+4. critical 风险 → `EDGE_SAFETY`。
 
-五类路径已由单元逻辑和冒烟脚本覆盖；当前 commit 的 Docker Compose 实际运行仍待 Docker
-daemon 启动后验证，不能引用 7 月历史记录代替。
+四类路径已由单元逻辑和 Docker Compose 冒烟脚本覆盖；Peer 路径不计入 MVP 验收。
 
 ### 仓库规范
 
-仓库已包含 `README.md`、`docs/ROADMAP.md`、架构/实现/API/测试/阶段状态、ADR、GitHub Actions、Issue/PR 模板和 Docker Compose。当前开发机已安装 Docker Client，但 daemon 未运行，因此容器构建、Toxiproxy 和五路径冒烟仍需完成最终验证。
+仓库已包含 `README.md`、`docs/ROADMAP.md`、架构/实现/API/测试/阶段状态、ADR、GitHub Actions、Issue/PR 模板和 Docker Compose。当前范围对齐分支已完成默认 Compose 构建、健康检查和四路径冒烟。
 
 ### 启动
 

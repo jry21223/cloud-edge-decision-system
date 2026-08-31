@@ -1,13 +1,13 @@
 # 系统架构设计
 
-> 版本：v1.0  
+> 版本：v1.1
 > 状态：架构定稿，MVP 原型代码已实现；当前 commit 的 Compose 实测待完成
 
 ## 1. 架构结论
 
 采用 **边缘自治 + 中央协同调度 + 云端增强** 的分层架构。
 
-传感器或客户端首先将任务交给边缘节点。边缘节点独立完成高置信度、低风险任务和紧急安全动作；只有不确定任务才请求 Controller。Controller 根据任务风险、剩余时间预算、请求携带的网络快照和节点心跳信息，对云端、其他边缘节点和本地降级统一评分。
+传感器或客户端首先将任务交给边缘节点。边缘节点独立完成高置信度、低风险任务和紧急安全动作；只有不确定任务才请求 Controller。默认 MVP 中 Controller 根据任务风险、剩余时间预算和网络状态，在 Cloud 与本地降级之间选路。Peer Edge 只在独立扩展配置中启用。
 
 ```mermaid
 flowchart TB
@@ -16,11 +16,9 @@ flowchart TB
     B -->|低置信度/需复核| D[Controller / Scheduler]
     D -->|云端可用且满足 deadline| E[Toxiproxy / tc-netem]
     E --> F[Cloud Inference]
-    D -->|健康且满足 deadline| G[Peer Edge]
     D -->|远端不可用| H[EDGE_FALLBACK]
     C --> I[最终决策]
     F --> I
-    G --> I
     H --> I
     I --> J[Recorder / Dashboard]
 ```
@@ -30,7 +28,7 @@ flowchart TB
 1. Client/Sensor 的首跳是 Edge，不是 Controller；
 2. Controller 是协同控制面，不是所有请求的必经数据面；
 3. 云端和 Controller 故障时，Edge 必须维持基本业务；
-4. Edge 不进行自由递归转发，Peer Edge 由 Controller 统一选择；
+4. 默认 MVP 不启用 Peer Edge；后期扩展仍只能由 Controller 统一选择；
 5. 模型、场景和云端供应方通过 Adapter 解耦；
 6. 日志、Ground Truth 和实验指标从第一版开始设计；
 7. 高风险任务的本地安全动作优先于云端复核。
@@ -49,7 +47,7 @@ flowchart TB
 ### Controller
 
 输入：任务、边缘结果、已消耗时间、网络/云端状态。  
-输出：`CLOUD`、`PEER_EDGE` 或 `EDGE_FALLBACK`，并给出 `decision_reason`。
+默认输出：`CLOUD` 或 `EDGE_FALLBACK`，并给出 `decision_reason`；`PEER_EDGE` 仅属于可选扩展。
 
 ### Cloud Node
 
@@ -72,9 +70,8 @@ flowchart TD
     C -->|否| E{confidence >= threshold?}
     E -->|是| F[EDGE]
     E -->|否| G[请求 Controller]
-    G --> H[DREAM-Route 构造 PEER / CLOUD / FALLBACK 候选]
+    G --> H[DREAM-Route 构造 CLOUD / FALLBACK 候选]
     H --> I{最优可行路径?}
-    I -->|健康 Peer| J[PEER_EDGE]
     I -->|云端| K[CLOUD]
     I -->|远端不可行或失败| L[EDGE_FALLBACK]
 ```
@@ -86,7 +83,7 @@ if task.risk_level == "critical" or edge_result.prediction is critical:
     return EDGE_SAFETY
 if edge_result.confidence >= local_threshold:
     return EDGE
-plan = rank(peer_candidates + [cloud, fallback], risk, network, load, deadline)
+plan = rank([cloud, fallback], risk, network, load, deadline)
 for route in plan:
     refresh_remaining_deadline()
     if route is feasible and remote_call_succeeds(route):
@@ -96,8 +93,8 @@ return conservative_local_fallback()
 
 Edge 心跳现在上报在线 CPU、RSS、可用时的 GPU/显存、真实等待队列、服务时延以及实际远端
 请求形成的 RTT/带宽 EWMA；没有在线样本时仍使用受控默认值。抖动、包级丢包与路径可用率的
-正式画像仍需冻结环境探针。带图像的 `/v1/tasks` 默认收集可用 Peer 结果并调用 DREAM-Fuse；
-无图像的兼容路径保持原有单目标升级行为。
+正式画像仍需冻结环境探针。带图像的 `/v1/tasks` 默认只执行 Edge–Cloud 软件主链；Peer 与
+DREAM-Fuse 仅在 `compose.peer.yml` 扩展中验证。
 
 ## 5. 本地部署
 
@@ -117,7 +114,9 @@ flowchart LR
 所有节点可以在一台电脑上通过 Docker Compose 模拟。视觉路径中 Toxiproxy 位于 Edge 到
 Cloud 的数据面，只影响被测试的云端链路，不修改整台开发机的网络。
 
-## 6. 多节点扩展约束
+## 6. 可选多节点扩展约束
+
+本节不属于默认 MVP 或本次正式验收，只保留后期扩展设计。
 
 - Node Registry + 心跳上报；
 - 节点 ID 与目标地址始终匹配静态白名单；共享部署再启用心跳令牌；

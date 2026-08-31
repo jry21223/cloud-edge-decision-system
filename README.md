@@ -1,16 +1,15 @@
 # Cloud-Edge Decision System
 
-面向 XH-202606 赛题的云边协同感知与决策原型。项目采用 **边缘自治 + 中央协同调度 + 云端增强** 架构，验证五条核心路径：
+面向 XH-202606 赛题的云边协同感知与决策原型。默认 MVP 采用 **Edge–Controller–Cloud** 架构，验证四条核心路径：
 
 - `EDGE`：高置信度、低风险任务由边缘端直接处理；
 - `CLOUD`：低置信度任务在网络可用时交给云端增强推理；
-- `PEER_EDGE`：满足 deadline 的健康邻近边缘节点协同推理；
 - `EDGE_FALLBACK`：云端不可用或超时时，执行本地保守降级；
 - `EDGE_SAFETY`：高风险任务在边缘端立即执行安全动作，不等待远端。
 
-> 当前版本：MVP v0.2（P0 工程链路）。已支持实际图像字节、经典视觉基线、ROI/RAW 直传、
-> 在线遥测、断网 outbox 与视觉主链 DREAM-Fuse。经典基线不是训练模型；真实 ONNX/轻量模型
-> 与有许可工业数据将在不改变服务接口的前提下替换。
+> 当前版本：MVP v0.3（范围对齐）。主场景冻结为金属工业零部件表面缺陷检测，代码已提供
+> YOLO + EfficientAD ONNX 组合 Adapter、五类缺陷契约和可选 Cloud VLM 结构化复核；仓库不携带
+> 模型权重或真实数据。默认 Compose 是软件模拟，Peer Edge 仅保留为可选扩展。
 
 ```mermaid
 flowchart TB
@@ -20,11 +19,9 @@ flowchart TB
     D -->|RoutingDecision| B
     B -->|ROI / RAW 直传| E[Toxiproxy]
     E --> F[Cloud Inference]
-    B -->|ROI 直传| G[Peer Edge]
     D -->|远端不可用| H[EDGE_FALLBACK]
     C --> I[最终决策]
     F --> I
-    G --> I
     H --> I
     I --> J[Recorder / Dashboard]
 ```
@@ -33,10 +30,9 @@ flowchart TB
 
 | 服务 | 本地端口 | 职责 |
 |---|---:|---|
-| Edge A | 8001 | 图像/遥测推理、质量门控、ROI、直传、单 worker 软件终态幂等与 outbox |
-| Edge B | 仅容器内 8000 | Peer 推理、心跳和一跳协同 |
-| Controller | 8002 | DREAM-Route 纯选路、节点注册、DREAM-Fuse 与关联终态 |
-| Cloud Node | 8003 | 遥测融合与可替换视觉复核 Adapter |
+| Edge | 8001 | 图像/遥测推理、质量门控、YOLO+EfficientAD Adapter、ROI、软件终态与 outbox |
+| Controller | 8002 | Edge–Cloud 选路、deadline、网络与回退控制 |
+| Cloud Node | 8003 | 软件模拟或受约束的视觉大模型复核 Adapter |
 | Recorder | 8004 | SQLite 事件日志和指标汇总 |
 | Toxiproxy | 8474 / 8666 | 模拟云端链路时延、限速、TCP 连接故障和断网 |
 | Dashboard | 8080 | 展示最近决策与路由统计 |
@@ -59,18 +55,23 @@ curl http://localhost:8003/health
 curl http://localhost:8004/health
 ```
 
-运行五条主路径的冒烟测试：
+运行四条 MVP 主路径的冒烟测试：
 
 ```bash
 docker compose -f docker-compose.yml -f compose.test.yml up --build -d
 python scripts/smoke_test.py
 ```
 
+Peer Edge 只在后期扩展验证时显式叠加：
+
+```bash
+docker compose -f docker-compose.yml -f compose.peer.yml up --build -d
+```
+
 默认 Compose 配置会关闭 `ALLOW_TEST_CONTROLS`，因此请求中的 `metadata.force_confidence`
 不会影响调度。冒烟测试使用 `compose.test.yml` 显式开启该测试专用控制；不要在共享或生产环境启用它。
 
-Controller 始终按 `TRUSTED_NODE_ENDPOINTS` 校验心跳中的节点 ID 与服务地址，防止伪造 Peer
-诱导 Edge 外传图像。共享或非本机部署还应为 `NODE_REGISTRATION_TOKEN` 设置随机值；Compose
+Controller 始终按 `TRUSTED_NODE_ENDPOINTS` 校验节点 ID 与服务地址。共享或非本机部署还应为 `NODE_REGISTRATION_TOKEN` 设置随机值；Compose
 会把同一令牌注入 Controller、Edge 和 Cloud，令牌为空只适合隔离的本机演示环境。
 
 打开 Dashboard：
@@ -116,11 +117,30 @@ python scripts/submit_vision_task.py \
   --image path/to/image.png \
   --edge-url http://localhost:8001 \
   --workpiece-id demo-part-001 \
+  --workpiece-type machined-metal-bracket \
   --station-id camera-a
 ```
 
-该命令不会把本地文件路径或文件名写入任务或 Controller。默认经典视觉 Adapter 用于验证图像解码、
-质量、bbox、ROI 和云边调度，不应把它的输出写成真实工业模型准确率。
+该命令不会把本地文件路径或文件名写入任务或 Controller。默认软件模拟 Adapter 用于验证图像解码、
+质量、bbox、ROI 和云边调度，不应把它的输出写成真实工业模型准确率。MVP profile 当前固定为
+`machined-metal-bracket`、材质 `metal`，缺陷标签为划痕、裂纹、凹坑/磨损、污染、缺件/装配异常。
+
+### 真实视觉模型模式
+
+真实 Edge 模式需要团队提供两个经过验证的 ONNX 文件：带端到端 NMS 的 YOLO 输出
+`[x1,y1,x2,y2,score,class_id]`，以及输出 `anomaly_score` 和 `anomaly_map` 的 EfficientAD。
+
+```bash
+python -m pip install -r requirements.txt
+EDGE_VISION_BACKEND=yolo_efficientad
+INDUSTRIAL_VISION_PROFILE=/app/configs/industrial-vision-profile.json
+YOLO_ONNX_PATH=/app/models/artifacts/yolo-defects-nms.onnx
+EFFICIENTAD_ONNX_PATH=/app/models/artifacts/efficientad.onnx
+```
+
+Cloud VLM 模式使用 OpenAI-compatible `/chat/completions` 接口，只接受固定 JSON 缺陷结构；模型建议的
+自由动作不会直接执行。启用时必须同时配置 `CLOUD_VLM_ENDPOINT`、`CLOUD_VLM_MODEL` 和
+`CLOUD_VLM_API_KEY`，并显式设置 `CLOUD_VLM_DATA_EXPORT_APPROVED=true`；缺项或未批准图像外传会拒绝启动。
 
 ## 4. 模拟云端断开
 
@@ -130,9 +150,8 @@ curl -X POST http://localhost:8474/proxies/cloud \
   -d '{"enabled": false}'
 ```
 
-健康 Peer 存在时，普通低置信度任务可能转为 `PEER_EDGE`，因此“关闭云端”本身并不保证
-`EDGE_FALLBACK`。冒烟脚本向 Controller 提交排除两个 Peer、deadline 足够上云的独立请求，
-先确认 Toxiproxy 已关闭 Cloud，再断言该请求因云端不可用而保守降级。恢复云端：
+默认 MVP 不启用 Peer Edge，因此关闭 Cloud 后低置信度任务必须进入 `EDGE_FALLBACK`。冒烟脚本
+先确认 Toxiproxy 已关闭 Cloud，再断言回退因果。恢复云端：
 
 ```bash
 curl -X POST http://localhost:8474/proxies/cloud \
@@ -150,7 +169,7 @@ ruff check src tests scripts
 
 容器不可用时，可以分别启动各 FastAPI 服务；具体命令见 [本地测试方案](docs/TEST_PLAN.md)。
 
-## 6. 边缘大模型基准（P3）
+## 6. 边缘大模型压缩扩展（非主线）
 
 真实模型阶段使用 scripts/benchmark_edge_llm.py 记录模型文件大小、进程内存峰值、显存、TTFT 和生成速度。模型权重必须存放在 models/artifacts/，该目录已被 Git 忽略。
 
@@ -182,6 +201,7 @@ LLM 只可细化非紧急任务；规则检测到工业 `critical` 或交通 `in
 当前实现与提交状态：
 
 - [DREAM-CE 创新算法与实现边界](docs/DREAM_CE_ALGORITHM.md)
+- [最终方案范围对齐与实施计划](docs/SCOPE_ALIGNMENT_PLAN.md)
 - [工业视觉技术实现方案](docs/INDUSTRIAL_VISION_TECHNICAL_IMPLEMENTATION.md)
 - [系统架构摘要](docs/ARCHITECTURE.md)
 - [API 设计](docs/API.md)
@@ -204,16 +224,16 @@ LLM 只可细化非紧急任务；规则检测到工业 `critical` 或交通 `in
 
 ## 8. 当前边界
 
-当前已提供双 Edge、视觉与遥测统一契约、CPU/RSS/GPU/队列及观测网络遥测、DREAM-Route
-候选排序、视觉主链多 Peer DREAM-Fuse、ROI/RAW 直传、SQLite 动作幂等/outbox、deadline 回退和
-弱网矩阵 runner。仍待团队补充有许可工业/交通数据、训练模型、带真值冲突集，以及冻结环境下
-的重复弱网与边缘大模型对照。文档中的比赛阈值均为目标；除非 `docs/evidence/` 有对应环境、
+当前已提供 Edge–Controller–Cloud 软件主链、视觉与遥测统一契约、五类缺陷 profile、
+YOLO+EfficientAD ONNX Adapter、可选 Cloud VLM 结构化复核、交通视觉迁移探针、ROI/RAW 直传、
+SQLite 动作幂等/outbox、deadline 回退和指标脚本。仍待团队补充有许可工业/交通数据、真实模型
+权重及冻结环境下的正式实验。文档中的比赛阈值均为目标；除非 `docs/evidence/` 有对应环境、
 commit 和原始输出，否则不代表已经达标。Toxiproxy 的随机 TCP 连接重置不能表述为包级丢包；
 精确丢包证据需使用 Linux `tc netem`。
 
 P0 的“幂等”主要指单 worker 下 SQLite 保存的软件最终决策和补传记录；Cloud 仅有进程内的
 有限去重缓存，重启或缓存淘汰后可能再次计算。仓库没有连接 PLC，也不宣称分布式现场动作
-exactly-once。视觉 DREAM-Fuse 当前按 `task_id` 关联同一
-任务的多 Peer 证据，不会仅凭 `workpiece_id` 推断跨工位同一性。弱网 runner 使用隔离的
+exactly-once。Peer Edge 与 DREAM-Fuse 代码只在叠加 `compose.peer.yml` 时作为后期扩展启用，
+不属于默认 MVP。弱网 runner 使用隔离的
 Controller-to-Cloud 合成 workload 验证代理故障、回退与恢复门禁，不等同于完整 Edge 图像端到端
 性能或正式比赛指标实验。
