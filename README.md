@@ -11,6 +11,25 @@
 > YOLO + EfficientAD ONNX 组合 Adapter、五类缺陷契约和可选 Cloud VLM 结构化复核；仓库不携带
 > 模型权重或真实数据。默认 Compose 是软件模拟，Peer Edge 仅保留为可选扩展。
 
+## 最终方案对齐状态
+
+| 项目 | 最终方案 | 当前仓库状态 |
+|---|---|---|
+| 主场景 | 工业零部件表面缺陷检测 | 已冻结为金属工业零部件；真实数据与权重待外部提供 |
+| 主工件 | 金属工业零部件 | 已提供 `machined-metal-bracket` / `metal` profile |
+| 缺陷类型 | 划痕、裂纹、凹坑/磨损、污染、缺件/装配异常 | 已写入五类缺陷契约与评测口径 |
+| Edge 模型 | YOLO 轻量检测 + EfficientAD 异常检测 | Adapter 与 ONNX Runtime 已实现；仓库不包含模型权重 |
+| Cloud 模型 | 视觉大模型增强复核 | 已提供受约束的 Cloud VLM Adapter；端点、密钥与图像外传批准需部署方配置 |
+| 第二场景 | 智慧交通视觉感知 | 仅提供同一图像契约和 Adapter 迁移探针，不开发检测、跟踪或 ReID |
+| 评价指标 | 工业视觉指标 + 云边系统指标 | 已提供评测脚本；正式数据集、冻结环境与重复实验仍待完成 |
+| 大模型压缩 | 扩展项，不作为主线 | 保留离线基准能力，不进入工业视觉实时主链 |
+| Peer Edge | 保留设计，后期扩展 | 默认关闭，仅通过 `compose.peer.yml` 显式启用 |
+| MVP 架构 | Edge–Controller–Cloud | 默认 Compose 已按该拓扑配置 |
+| 现场执行 | 软件模拟 | 当前仅验证软件链路和回退，不代表现场执行验收 |
+| PLC | 不接入 | 仓库无 PLC、相机厂商 SDK 或执行器 ACK 集成 |
+
+完整范围、外部输入门禁和正式验收步骤见[最终方案范围对齐与实施计划](docs/SCOPE_ALIGNMENT_PLAN.md)。
+
 ```mermaid
 flowchart TB
     A[场景与数据层] --> B[边缘自治层 Edge]
