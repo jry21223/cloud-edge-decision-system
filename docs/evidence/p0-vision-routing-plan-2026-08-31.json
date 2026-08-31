@@ -1,0 +1,65 @@
+{
+  "task_id": "p0-final-741b7a90f03e4b47825efcb140722cd2",
+  "trace_id": "df1d6112-2e72-486b-8309-1f2eb5b4d982",
+  "route": "CLOUD",
+  "target_node": "cloud",
+  "target_endpoint": "http://toxiproxy:8666",
+  "upload_mode": "ROI",
+  "timeout_ms": 800,
+  "estimated_finish_ms": 370.62422699999996,
+  "decision_reason": "latency=370.6ms, accuracy=0.960, availability=1.000, load=0.106, cost=0.3124",
+  "policy_version": "dream-route-v1",
+  "candidate_scores": {
+    "CLOUD@cloud": 0.312437,
+    "PEER_EDGE@edge-b": 0.39709,
+    "EDGE_FALLBACK@-": 1.950512
+  },
+  "rejected_reasons": [],
+  "candidates": [
+    {
+      "route": "CLOUD",
+      "target_node": "cloud",
+      "target_endpoint": "http://toxiproxy:8666",
+      "upload_mode": "ROI",
+      "timeout_ms": 800,
+      "estimated_finish_ms": 370.62422699999996,
+      "score": 0.312437,
+      "feasible": true,
+      "explanation": "latency=370.6ms, accuracy=0.960, availability=1.000, load=0.106, cost=0.3124"
+    },
+    {
+      "route": "PEER_EDGE",
+      "target_node": "edge-b",
+      "target_endpoint": "http://edge-b:8000",
+      "upload_mode": "ROI",
+      "timeout_ms": 400,
+      "estimated_finish_ms": 20.3556,
+      "score": 0.39709,
+      "feasible": true,
+      "explanation": "latency=20.4ms, accuracy=0.850, availability=1.000, load=0.106, cost=0.3971"
+    },
+    {
+      "route": "EDGE_FALLBACK",
+      "target_node": null,
+      "target_endpoint": null,
+      "upload_mode": "METADATA",
+      "timeout_ms": 0,
+      "estimated_finish_ms": 1,
+      "score": 1.950512,
+      "feasible": true,
+      "explanation": "latency=1.0ms, accuracy=0.500, availability=1.000, load=0.000, cost=1.9505"
+    }
+  ],
+  "network_snapshot": {
+    "availability": 1,
+    "rtt_ms": 20,
+    "jitter_ms": 0,
+    "packet_loss": 0,
+    "remaining_deadline_ms": 1953.016997999839
+  },
+  "workpiece_id": "synthetic-workpiece-p0-final-741b7a90f03e4b47825efcb140722cd2",
+  "station_id": "demo-station",
+  "batch_id": "demo-batch",
+  "image_sha256": "295d22322d1c7f41735384f232da08d6e92f588a0f8fe9859eda59fd6e1fb6b5",
+  "controller_received_image_bytes": false
+}

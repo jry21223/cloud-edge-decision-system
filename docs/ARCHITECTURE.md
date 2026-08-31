@@ -94,17 +94,19 @@ for route in plan:
 return conservative_local_fallback()
 ```
 
-当前网络 RTT、抖动、丢包率和可用率来自请求 `metadata.network`，节点负载/队列来自心跳；
-它们是可控实验输入，尚不是系统自动测得的实时遥测。DREAM-Fuse 已在独立
-`POST /v1/arbitrate` 接口实现，但普通 `/v1/tasks` 路径尚未自动收集多个 Peer 的关联结果并触发融合。
+Edge 心跳现在上报在线 CPU、RSS、可用时的 GPU/显存、真实等待队列、服务时延以及实际远端
+请求形成的 RTT/带宽 EWMA；没有在线样本时仍使用受控默认值。抖动、包级丢包与路径可用率的
+正式画像仍需冻结环境探针。带图像的 `/v1/tasks` 默认收集可用 Peer 结果并调用 DREAM-Fuse；
+无图像的兼容路径保持原有单目标升级行为。
 
 ## 5. 本地部署
 
 ```mermaid
 flowchart LR
     C[Client] --> E[Edge A :8001]
-    E --> S[Controller :8002]
-    S --> T[Toxiproxy :8666]
+    E -->|byte-free descriptor| S[Controller :8002]
+    S -->|RoutingDecision| E
+    E -->|ROI / RAW| T[Toxiproxy :8666]
     T --> CL[Cloud :8003]
     E -.events.-> R[Recorder :8004]
     S -.events.-> R
@@ -112,16 +114,21 @@ flowchart LR
     R --> D[Dashboard :8080]
 ```
 
-所有节点可以在一台电脑上通过 Docker Compose 模拟。Toxiproxy 放置在 Controller 与 Cloud 之间，只影响被测试的云端链路，不修改整台开发机的网络。
+所有节点可以在一台电脑上通过 Docker Compose 模拟。视觉路径中 Toxiproxy 位于 Edge 到
+Cloud 的数据面，只影响被测试的云端链路，不修改整台开发机的网络。
 
 ## 6. 多节点扩展约束
 
 - Node Registry + 心跳上报；
+- 节点 ID 与目标地址始终匹配静态白名单；共享部署再启用心跳令牌；
 - 所有 Peer 选择由 Controller 完成；
 - `hop_count <= 1`；
 - `visited_nodes` 防止重复访问；
-- `task_id` 作为幂等键的设计约束；持久化去重尚待实现；
+- 单 worker 下视觉任务按 `task_id + request SHA-256` 持久化软件终态；同 ID 异载荷拒绝，
+  不代表 PLC 动作 exactly-once；
 - 超过 deadline 立即降级；
 - 仲裁使用 DREAM-Fuse：校准置信度 × 节点可靠度 × 新鲜度 × 时空一致性 × 版本系数；
 - 高风险且证据充分时立即执行保守安全动作；普通低共识冲突请求云复核；
 - `resolution_success`（自主形成结果）与带 ground truth 的正确解决率分开统计。
+- P0 按 `task_id` 关联同任务的多 Peer 证据；跨工位关联仍待上游契约；
+- 真值在推理结束后通过 Recorder 独立附加，不参与模型推理或调度。

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import re
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 
 from common.schemas import ArbitrationRequest, ArbitrationResponse, EdgeProposal, Route
 
@@ -25,14 +25,17 @@ def _calibrated_confidence(confidence: float, temperature: float) -> float:
 
 def _proposal_weights(request: ArbitrationRequest) -> dict[str, float]:
     proposals = request.proposals
-    newest: datetime = max(item.observed_at for item in proposals)
+    current_time = datetime.now(UTC)
     newest_version = max(_policy_version_key(item.policy_version) for item in proposals)
     half_life_seconds = max(float(request.task.metadata.get("freshness_half_life_s", 5.0)), 0.1)
     temperature = max(float(request.task.metadata.get("confidence_temperature", 1.0)), 0.05)
 
     weights: dict[str, float] = {}
     for item in proposals:
-        age_seconds = max(0.0, (newest - item.observed_at).total_seconds())
+        observed_at = item.observed_at
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=UTC)
+        age_seconds = max(0.0, (current_time - observed_at).total_seconds())
         freshness = math.exp(-math.log(2.0) * age_seconds / half_life_seconds)
         version_factor = 1.0 if _policy_version_key(item.policy_version) == newest_version else 0.95
         confidence = _calibrated_confidence(item.result.confidence, temperature)
@@ -67,8 +70,31 @@ def _safety_action(scene: str) -> str:
 def arbitrate(request: ArbitrationRequest) -> ArbitrationResponse:
     """DREAM-Fuse: reliability-, freshness-, and topology-aware evidence fusion."""
 
-    proposals = request.proposals
-    weights = _proposal_weights(request)
+    unique_by_node: dict[str, EdgeProposal] = {}
+    duplicate_proposals = 0
+    for proposal in request.proposals:
+        if proposal.node_id != proposal.result.node_id:
+            raise ValueError("proposal node_id must match result.node_id")
+        previous = unique_by_node.get(proposal.node_id)
+        if previous is None:
+            unique_by_node[proposal.node_id] = proposal
+            continue
+        duplicate_proposals += 1
+        if (
+            proposal.observed_at,
+            _policy_version_key(proposal.policy_version),
+            proposal.proposal_id,
+        ) > (
+            previous.observed_at,
+            _policy_version_key(previous.policy_version),
+            previous.proposal_id,
+        ):
+            unique_by_node[proposal.node_id] = proposal
+    proposals = list(unique_by_node.values())
+    if len(proposals) < 2:
+        raise ValueError("DREAM-Fuse requires proposals from at least two unique nodes")
+    normalized_request = request.model_copy(update={"proposals": proposals})
+    weights = _proposal_weights(normalized_request)
     grouped: dict[tuple[str, str], list[EdgeProposal]] = defaultdict(list)
     for item in proposals:
         grouped[(item.result.prediction, item.result.action)].append(item)
@@ -77,7 +103,8 @@ def arbitrate(request: ArbitrationRequest) -> ArbitrationResponse:
         outcome: sum(weights[item.node_id] for item in items)
         for outcome, items in grouped.items()
     }
-    total_evidence = max(sum(raw_evidence.values()), 1e-9)
+    absolute_evidence = sum(raw_evidence.values())
+    total_evidence = max(absolute_evidence, 1e-9)
     normalized = {
         outcome: evidence / total_evidence for outcome, evidence in raw_evidence.items()
     }
@@ -92,8 +119,22 @@ def arbitrate(request: ArbitrationRequest) -> ArbitrationResponse:
         or max(weights[item.node_id] for item in emergency_items) >= 0.40
     )
 
+    minimum_absolute_evidence = max(
+        0.0,
+        float(request.task.metadata.get("minimum_absolute_evidence", 0.05)),
+    )
+    insufficient_fresh_evidence = absolute_evidence < minimum_absolute_evidence
     requires_cloud_review = False
-    if emergency_supported:
+    if insufficient_fresh_evidence:
+        chosen = _winner(proposals, weights)
+        chosen_outcome = (chosen.result.prediction, chosen.result.action)
+        consensus = normalized[chosen_outcome]
+        route = Route.CLOUD
+        action = "review"
+        resolved = False
+        requires_cloud_review = True
+        reason = "DREAM-Fuse rejected stale or insufficient absolute evidence; cloud review required"
+    elif emergency_supported:
         chosen = _winner(emergency_items, weights)
         chosen_outcome = (chosen.result.prediction, chosen.result.action)
         route = Route.EDGE_SAFETY
@@ -138,4 +179,6 @@ def arbitrate(request: ArbitrationRequest) -> ArbitrationResponse:
         consensus_score=round(consensus, 6),
         requires_cloud_review=requires_cloud_review,
         evidence_scores=evidence_scores,
+        association_id=request.association_id,
+        duplicate_proposals=duplicate_proposals,
     )

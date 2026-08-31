@@ -8,16 +8,19 @@
 - `EDGE_FALLBACK`：云端不可用或超时时，执行本地保守降级；
 - `EDGE_SAFETY`：高风险任务在边缘端立即执行安全动作，不等待远端。
 
-> 当前版本：MVP v0.1。默认使用可解释规则模型，用于验证系统架构、调度路径、弱网降级和指标采集。真实 ONNX/轻量模型将在不改变服务接口的前提下替换。
+> 当前版本：MVP v0.2（P0 工程链路）。已支持实际图像字节、经典视觉基线、ROI/RAW 直传、
+> 在线遥测、断网 outbox 与视觉主链 DREAM-Fuse。经典基线不是训练模型；真实 ONNX/轻量模型
+> 与有许可工业数据将在不改变服务接口的前提下替换。
 
 ```mermaid
 flowchart TB
     A[场景与数据层] --> B[边缘自治层 Edge]
     B -->|高置信度/低风险| C[本地快速路径]
     B -->|低置信度/需复核| D[Controller / Scheduler]
-    D -->|云端可用且满足 deadline| E[Toxiproxy / tc-netem]
+    D -->|RoutingDecision| B
+    B -->|ROI / RAW 直传| E[Toxiproxy]
     E --> F[Cloud Inference]
-    D -->|健康 Peer 且满足 deadline| G[Peer Edge]
+    B -->|ROI 直传| G[Peer Edge]
     D -->|远端不可用| H[EDGE_FALLBACK]
     C --> I[最终决策]
     F --> I
@@ -30,12 +33,12 @@ flowchart TB
 
 | 服务 | 本地端口 | 职责 |
 |---|---:|---|
-| Edge A | 8001 | 本地推理、置信度判断、安全动作 |
+| Edge A | 8001 | 图像/遥测推理、质量门控、ROI、直传、单 worker 软件终态幂等与 outbox |
 | Edge B | 仅容器内 8000 | Peer 推理、心跳和一跳协同 |
-| Controller | 8002 | DREAM-Route、Peer/Cloud 调用、deadline 与降级 |
-| Cloud Node | 8003 | 较强的融合推理服务 |
+| Controller | 8002 | DREAM-Route 纯选路、节点注册、DREAM-Fuse 与关联终态 |
+| Cloud Node | 8003 | 遥测融合与可替换视觉复核 Adapter |
 | Recorder | 8004 | SQLite 事件日志和指标汇总 |
-| Toxiproxy | 8474 / 8666 | 模拟云端链路延迟、丢包和断网 |
+| Toxiproxy | 8474 / 8666 | 模拟云端链路时延、限速、TCP 连接故障和断网 |
 | Dashboard | 8080 | 展示最近决策与路由统计 |
 
 ## 2. 快速启动
@@ -65,6 +68,10 @@ python scripts/smoke_test.py
 
 默认 Compose 配置会关闭 `ALLOW_TEST_CONTROLS`，因此请求中的 `metadata.force_confidence`
 不会影响调度。冒烟测试使用 `compose.test.yml` 显式开启该测试专用控制；不要在共享或生产环境启用它。
+
+Controller 始终按 `TRUSTED_NODE_ENDPOINTS` 校验心跳中的节点 ID 与服务地址，防止伪造 Peer
+诱导 Edge 外传图像。共享或非本机部署还应为 `NODE_REGISTRATION_TOKEN` 设置随机值；Compose
+会把同一令牌注入 Controller、Edge 和 Cloud，令牌为空只适合隔离的本机演示环境。
 
 打开 Dashboard：
 
@@ -101,6 +108,19 @@ curl -X POST http://localhost:8001/v1/tasks \
 默认配置会忽略 `metadata.force_confidence`。如需复现该测试路由，请先用上方的
 `compose.test.yml` 覆盖启动；测试控制已应用时会写入 Edge 日志和 Recorder 决策事件的
 `edge_result.reason`。
+
+提交本地图像（PNG/JPEG/BMP）并自动计算尺寸、SHA-256 与 Base64：
+
+```bash
+python scripts/submit_vision_task.py \
+  --image path/to/image.png \
+  --edge-url http://localhost:8001 \
+  --workpiece-id demo-part-001 \
+  --station-id camera-a
+```
+
+该命令不会把本地文件路径或文件名写入任务或 Controller。默认经典视觉 Adapter 用于验证图像解码、
+质量、bbox、ROI 和云边调度，不应把它的输出写成真实工业模型准确率。
 
 ## 4. 模拟云端断开
 
@@ -167,7 +187,7 @@ LLM 只可细化非紧急任务；规则检测到工业 `critical` 或交通 `in
 - [API 设计](docs/API.md)
 - [本地、冒烟与压力测试方案](docs/TEST_PLAN.md)
 - [模型单次基准与限制](docs/MODEL_BENCHMARK.md)
-- [2026-08-30 提交状态与证据清单](docs/SUBMISSION_STATUS_2026-08-30.md)
+- [2026-08-31 P0 提交状态与证据清单](docs/SUBMISSION_STATUS_2026-08-30.md)
 - [压力测试、指标口径与待确认问题](docs/STRESS_TEST_AND_METRICS_REVIEW.md)
 - [算法与模型设计](docs/ALGORITHM_AND_MODEL_DESIGN.md)
 - [算法与模型设计阶段报告](docs/ALGORITHM_AND_MODEL_DESIGN_STAGE_REPORT.md)
@@ -184,4 +204,16 @@ LLM 只可细化非紧急任务；规则检测到工业 `critical` 或交通 `in
 
 ## 8. 当前边界
 
-当前已提供双 Edge 一跳 Peer 转发、节点心跳、DREAM-Route 候选排序、确定性证据仲裁、有限 deadline 回退和指标采集。工业视觉/交通真实数据、在线资源采样、弱网矩阵、带真值冲突实验和边缘大模型能力对照仍待完成；文档中的比赛阈值均为目标，除非 `docs/evidence/` 有对应环境、commit 和原始输出，否则不代表已经达标。
+当前已提供双 Edge、视觉与遥测统一契约、CPU/RSS/GPU/队列及观测网络遥测、DREAM-Route
+候选排序、视觉主链多 Peer DREAM-Fuse、ROI/RAW 直传、SQLite 动作幂等/outbox、deadline 回退和
+弱网矩阵 runner。仍待团队补充有许可工业/交通数据、训练模型、带真值冲突集，以及冻结环境下
+的重复弱网与边缘大模型对照。文档中的比赛阈值均为目标；除非 `docs/evidence/` 有对应环境、
+commit 和原始输出，否则不代表已经达标。Toxiproxy 的随机 TCP 连接重置不能表述为包级丢包；
+精确丢包证据需使用 Linux `tc netem`。
+
+P0 的“幂等”主要指单 worker 下 SQLite 保存的软件最终决策和补传记录；Cloud 仅有进程内的
+有限去重缓存，重启或缓存淘汰后可能再次计算。仓库没有连接 PLC，也不宣称分布式现场动作
+exactly-once。视觉 DREAM-Fuse 当前按 `task_id` 关联同一
+任务的多 Peer 证据，不会仅凭 `workpiece_id` 推断跨工位同一性。弱网 runner 使用隔离的
+Controller-to-Cloud 合成 workload 验证代理故障、回退与恢复门禁，不等同于完整 Edge 图像端到端
+性能或正式比赛指标实验。

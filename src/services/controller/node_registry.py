@@ -31,6 +31,24 @@ class NodeRegistry:
         excluded_node_ids: set[str] | None = None,
         now: datetime | None = None,
     ) -> NodeStatus | None:
+        candidates = self.select_peers(
+            scene=scene,
+            excluded_node_ids=excluded_node_ids,
+            now=now,
+            limit=1,
+        )
+        return candidates[0] if candidates else None
+
+    def select_peers(
+        self,
+        *,
+        scene: str,
+        excluded_node_ids: set[str] | None = None,
+        now: datetime | None = None,
+        limit: int = 8,
+    ) -> list[NodeStatus]:
+        """Return deterministic healthy Peer candidates in increasing cost order."""
+
         excluded = excluded_node_ids or set()
         candidates = [
             status
@@ -42,9 +60,7 @@ class NodeRegistry:
                 and scene in status.supported_scenes
             )
         ]
-        if not candidates:
-            return None
-        return min(
+        ranked = sorted(
             candidates,
             key=lambda status: (
                 status.estimated_latency_ms
@@ -54,6 +70,15 @@ class NodeRegistry:
                 status.node_id,
             ),
         )
+        return ranked[: max(0, limit)]
+
+    def get_node(self, node_id: str, *, now: datetime | None = None) -> NodeStatus | None:
+        current_time = now or datetime.now(UTC)
+        entry = self._entries.get(node_id)
+        if entry is None:
+            return None
+        payload, last_seen = entry
+        return self._status(payload, last_seen, now=current_time)
 
     def _status(self, payload: NodeHeartbeat, last_seen: datetime, *, now: datetime) -> NodeStatus:
         return NodeStatus(

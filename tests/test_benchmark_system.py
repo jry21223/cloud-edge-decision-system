@@ -1,4 +1,4 @@
-from scripts.benchmark_system import RequestResult, percentile, summarize_results
+from scripts.benchmark_system import RequestResult, build_task, percentile, summarize_results
 
 
 def test_percentile_uses_linear_interpolation_and_handles_empty_input():
@@ -82,3 +82,18 @@ def test_summary_handles_an_empty_run_without_division_by_zero():
         "p95": None,
         "p99": None,
     }
+
+
+def test_controller_cloud_workload_excludes_peers_and_preserves_labeled_task():
+    request = build_task(
+        2,
+        scene="industrial",
+        deadline_ms=500,
+        workload_mode="controller_cloud",
+    )
+
+    assert request["task"]["metadata"]["benchmark_case"] == "critical"
+    assert request["task"]["risk_level"] == "critical"
+    assert request["hop_count"] == 1
+    assert request["visited_nodes"] == ["edge-a", "edge-b"]
+    assert request["edge_result"]["confidence"] == 0.55

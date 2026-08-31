@@ -1,10 +1,10 @@
 # 工业视觉检测云边协同技术落实稿
 
-> 版本：v0.1
+> 版本：v0.2（P0 工程链路落地）
 >
-> 日期：2026-08-06
+> 日期：2026-08-31
 >
-> 状态：技术基线，供架构评审、任务拆分和后续实现使用
+> 状态：P0 软件链路已实现并自动化验证；真实数据集与训练模型仍待团队提供
 >
 > 适用范围：工业零部件表面缺陷检测主场景
 
@@ -20,12 +20,17 @@
 - ROI 或必要原图由 Edge 按 Controller 返回的目标地址直传 Cloud 或 Peer Edge；
 - Cloud 输出结构化复核结果，并将难例、阈值建议和模型版本反馈到边缘侧更新流程。
 
-当前仓库已经具备 Edge、Controller、Cloud、Recorder、Dashboard、Peer Edge、回退和仲裁骨架，但仍存在两项必须正视的差距：
+当前仓库已经完成图像字节契约、可替换 `VisionModelAdapter`、质量门控、bbox/ROI、Controller
+纯选路接口、Edge 直传 Peer/Cloud、SQLite 单 worker 软件终态幂等与断网 outbox，以及视觉主链上的多 Peer
+DREAM-Fuse。为了不伪造模型效果，默认实现明确命名为 `ClassicalVisionAdapter`，它只用于验证
+真实图像字节和调度链路，不是经过工业数据训练的缺陷模型。
 
-1. 当前 `industrial` Adapter 使用温度、振动和电流规则，不是真实图像模型；
-2. 当前 Controller 直接调用 Cloud，仍混合了部分控制平面和数据平面职责。
+以下涉及 PLC、跨工位关联、模型更新、磁盘淘汰和高精度模型的条目是目标设计；当前只冻结软件
+最终决策，没有现场执行器 ACK，也不宣称现场动作 exactly-once。P0 仲裁范围为单个 `task_id`
+的多 Peer 结果，而非自动跨工位聚合。
 
-因此，近期目标不是推翻现有服务，而是保留调度与故障处理骨架，新增视觉数据契约、视觉 Model Adapter 和 Edge 直传远端的数据链路。
+仍需团队提供两类外部输入：有来源与许可的工业图像/真值，以及冻结的 ONNX/OpenVINO/TensorRT
+模型权重。没有这些证据前，仓库不能声称“真实工业模型准确率已验证”。
 
 ## 2. 可交付系统边界
 
@@ -197,7 +202,8 @@ J(route) = wL * latency_ratio
 - `visited_nodes` 防止环路；
 - Peer 必须支持相同场景，并声明兼容的输入和模型版本；
 - Peer 结果不自动覆盖高风险本地动作；
-- 请求、返回和重试均以 `task_id` 幂等。
+- Edge 视觉最终决策以 `task_id` 和请求哈希幂等；Peer `/v1/infer` 可被重复计算，不应将它误写成
+  整条分布式链路 exactly-once。
 
 ## 6. Cloud 技术细节
 
@@ -343,7 +349,7 @@ Cloud 不直接下发“自动生效的新阈值”。阈值和策略建议先�
 - Docker Compose 编排；
 - ONNX Runtime/OpenVINO 作为首个真实 Edge 推理后端；
 - SQLite + 单写 Recorder 保存事件；
-- Toxiproxy 模拟 Controller 到 Cloud 的延迟、丢包和断网；
+- Toxiproxy 模拟 Edge 到 Cloud 的时延、限速、TCP 随机连接故障和断网；精确包级丢包需另用 Linux `tc netem`；
 - Dashboard 展示路径、时延、上传量、错误和模型版本。
 
 ### 10.2 现场设备映射
@@ -360,7 +366,8 @@ Cloud 不直接下发“自动生效的新阈值”。阈值和策略建议先�
 
 - 默认只上传 ROI，不上传全量原图；
 - 图像、ROI、推理结果和模型包均记录 SHA-256；
-- 服务间至少使用 API 身份凭据，正式部署使用 mTLS；
+- Controller 已强制节点 ID/服务地址白名单；共享部署必须设置 `NODE_REGISTRATION_TOKEN`，
+  全部业务接口的身份认证和正式 mTLS 属于生产加固待办；
 - 记录谁在何时使用哪个模型和策略做出何种动作；
 - 原图、ROI 和事件分别配置保留期；
 - 对上传失败、校验失败、模型版本不兼容和重复任务设置独立事件类型；
@@ -375,7 +382,11 @@ Cloud 不直接下发“自动生效的新阈值”。阈值和策略建议先�
 3. `Fixed Cascade`：固定 confidence 阈值决定是否上云；
 4. `Full Scheduler`：多约束调度、分级上传、回退和冲突仲裁。
 
-至少覆盖以下扰动：正常网络、额外 100 ms/300 ms 时延、10% 丢包、短时断网、Cloud 不可用、Edge/Cloud 过载、多工位冲突、重复请求和乱序返回。
+仓库弱网 runner 已覆盖正常网络、额外 100 ms/300 ms 往返时延、5 Mbps 限速、5% TCP
+随机连接重置和断网，并在异常退出时恢复代理。默认使用隔离的 Controller-to-Cloud 合成遥测
+workload，逐项校验 toxic 并断言每项任务确实尝试 Cloud；恢复门禁采用 3 个连续 5 秒固定窗口。
+它不是完整 Edge 图像端到端实验。TCP 连接重置不等于包级丢包；精确丢包、Cloud/Edge 过载和
+代表性多工位冲突仍须在冻结环境中补充实测。
 
 | 类别 | 指标 | 必要证据 |
 |---|---|---|
@@ -392,29 +403,29 @@ Cloud 不直接下发“自动生效的新阈值”。阈值和策略建议先�
 
 | 优先级 | 当前状态 | 要补的内容 | 完成判据 |
 |---|---|---|---|
-| P0 | `industrial` 为设备遥测规则 | 新增图像任务契约和 `VisionModelAdapter` | 文件图像能得到 bbox/score/quality/result |
-| P0 | 数据对象缺少工件和图像字段 | 增加 `trace_id`、`workpiece_id`、`station_id`、`batch_id`、image/ROI 描述 | OpenAPI、单测和示例同步 |
-| P0 | Controller 直接调用 Cloud | Controller 返回目标和上传模式，Edge 直传数据 | Controller 日志不出现图像字节；ROI 路径端到端通过 |
-| P0 | 回退只返回决策 | 增加本地 outbox 和恢复补传 | 断网任务可在恢复后补传且不重复执行动作 |
-| P1 | 已有动态代价函数 | 接入真实 RTT、队列、负载和上传字节 | 路由日志含输入快照、候选得分和剔除原因 |
-| P1 | 已有 Peer 与仲裁骨架 | 用 `workpiece_id + station_id` 关联多工位结果 | 冲突、重复、乱序用例自动化通过 |
+| P0 | 已完成（工程链路） | 图像契约、`ClassicalVisionAdapter`、质量门控、bbox/ROI | 合成图像夹具与任意本地图像可得到 score/quality/result；不冒充训练模型 |
+| P0 | 已完成 | `trace_id`、`workpiece_id`、`station_id`、`batch_id`、image/ROI 描述 | OpenAPI、单测和 CLI 示例同步 |
+| P0 | 已完成（视觉路径） | `/v1/routes/decide` 只返回目标/上传模式，Edge 直传数据 | Controller 拒绝字节和本地引用；ROI 直传自动化通过 |
+| P0 | 已完成（单 worker 软件终态） | SQLite outbox、重试和任务级决策记录幂等 | 远端尝试失败后的恢复只补传复核证据，不覆盖冻结的软件决策；不包含 PLC exactly-once |
+| P0 | 已完成（在线采样） | Edge/Cloud 有界并发、CPU/RSS/GPU、队列、RTT/带宽 EWMA | 心跳/健康接口暴露运行时快照；GPU 不可用明确为 `null` |
+| P0 | 已完成（软件主链） | 视觉任务默认汇集可用 Peer 并调用 DREAM-Fuse | 任务级关联、身份校验、去重、绝对新鲜度、终态持久化与待复核隔离测试通过 |
+| P0 | runner 已完成，正式实测待冻结环境 | N0/RTT100/RTT300/BW5M/CF5/OFFLINE 与恢复测量 | runner 校验并恢复 toxic；正式重复实验结果不得预先声称达标 |
 | P1 | Cloud 仍是规则融合 | 增加高精度视觉 Adapter 和受约束结构化输出 | ROI 复核可替换模型且接口不变 |
-| P1 | Recorder 已有事件记录 | 补充阶段耗时、字节数、版本、deadline 和 ground truth 字段 | 可直接导出四组基线 CSV |
+| P1 | Recorder 已有事件与事后真值接口 | 进一步补齐全链路阶段耗时和四组正式基线导出 | 真值不进入推理请求；使用独立标注的正式 CSV |
 | P2 | 无模型发布闭环 | 模型注册、灰度、签名校验和回滚 | 不重启整体系统即可安全切换并回滚 Edge 模型 |
 
 ## 14. 推荐实施顺序
 
-1. 冻结视觉任务、结果、路由和最终决策四类数据对象；
-2. 新增文件图像输入与 Mock Vision Adapter，先跑通真实图像字节链路；
-3. 接入一个真实 Edge 基线模型，输出 bbox 或 anomaly map；
-4. 改造 Controller 为纯控制平面，完成 ROI 直传 Cloud；
-5. 完成本地 outbox、超时和恢复补传；
-6. 接入 Cloud 高精度复核 Adapter；
-7. 跑通 Edge、Cloud、Fallback 三条主路径并导出 trace；
-8. 再扩展 Peer Edge、多工位冲突和第二场景；
-9. 最后执行四组基线、弱网和资源实验。
+1. 已完成：冻结视觉任务、结果、路由和最终决策四类数据对象；
+2. 已完成：文件图像输入、经典像素基线、ROI 直传、outbox、在线遥测和 DREAM-Fuse 主链；
+3. 团队输入：冻结首个工件、缺陷集合、数据许可、划分和 ground truth；
+4. 接入一个真实 Edge 基线模型，输出 bbox 或 anomaly map，并保留当前 Adapter 接口；
+5. 接入 Cloud 高精度复核 Adapter，执行同数据同划分的对照与消融；
+6. 在冻结 commit/环境下重复执行四组基线、弱网、资源和恢复实验。
 
-第一阶段最小验收不以模型精度最优为目标，而以“真实图像输入、本地结论、ROI 上云、远端超时回退、完整证据链”五项同时成立为准。
+第一阶段软件验收以“实际图像字节输入、本地结论、ROI 直传、远端超时回退、完整证据链”
+五项同时成立为准。“实际图像字节”只描述接口和解码链路；只有接入有许可的工业数据与训练
+模型后，才能升级为“真实工业检测效果验收”。
 
 ## 15. 待团队冻结的五个决策
 

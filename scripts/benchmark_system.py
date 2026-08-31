@@ -24,6 +24,8 @@ class BenchmarkConfig:
     scene: str
     deadline_ms: int
     timeout_ms: int
+    fault_profile: str | None = None
+    workload_mode: str = "edge_tasks"
 
     def __post_init__(self) -> None:
         if self.request_count <= 0:
@@ -36,6 +38,8 @@ class BenchmarkConfig:
             raise ValueError("deadline_ms must be positive")
         if self.timeout_ms <= 0:
             raise ValueError("timeout_ms must be positive")
+        if self.workload_mode not in {"edge_tasks", "controller_cloud"}:
+            raise ValueError("workload_mode must be 'edge_tasks' or 'controller_cloud'")
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,12 @@ class RequestResult:
     response_bytes: int
     status_code: int | None
     error: str | None = None
+    expected_prediction: str | None = None
+    risk_level: str | None = None
+    final_prediction: str | None = None
+    final_action: str | None = None
+    expected_action: str | None = None
+    attempted_routes: tuple[str, ...] = ()
 
 
 def percentile(values: Sequence[float], q: float) -> float | None:
@@ -83,12 +93,52 @@ def summarize_results(
     routes = Counter(result.route or "UNKNOWN" for result in results if result.success)
     request_bytes = sum(result.request_bytes for result in results)
     response_bytes = sum(result.response_bytes for result in results)
+    labeled = [result for result in results if result.expected_prediction is not None]
+    allowed_actions = {
+        "continue",
+        "inspect",
+        "shutdown",
+        "isolate",
+        "quarantine",
+        "keep_open",
+        "divert",
+        "close_lane",
+        "slow_traffic",
+    }
+    retained = sum(
+        result.success
+        and result.latency_ms <= deadline_ms
+        and result.final_action in allowed_actions
+        for result in labeled
+    )
+    severe = [
+        result
+        for result in labeled
+        if result.risk_level == "critical"
+        or result.expected_prediction in {"critical", "incident"}
+    ]
+    safe_containment_actions = {"shutdown", "isolate", "quarantine", "close_lane"}
+    severe_misses = sum(
+        result.final_action not in safe_containment_actions for result in severe
+    )
+    normal = [result for result in labeled if result.expected_prediction == "normal"]
+    false_isolations = sum(
+        result.final_action in {"shutdown", "isolate", "quarantine", "close_lane"}
+        for result in normal
+    )
+    action_matches = sum(
+        result.final_action == result.expected_action
+        for result in labeled
+        if result.expected_action is not None
+    )
+    action_labeled = sum(result.expected_action is not None for result in labeled)
+    cloud_path_attempted = sum("CLOUD" in result.attempted_routes for result in results)
 
     def rounded(value: float | None) -> float | None:
         return None if value is None else round(value, 6)
 
     safe_elapsed_s = max(float(elapsed_s), 0.0)
-    return {
+    summary = {
         "total_requests": total,
         "successful_requests": successful,
         "failed_requests": total - successful,
@@ -112,9 +162,60 @@ def summarize_results(
             "p99": rounded(percentile(latencies, 99)),
         },
     }
+    if any(result.attempted_routes for result in results):
+        summary["cloud_path_attempted_requests"] = cloud_path_attempted
+    if labeled:
+        summary["business_retention"] = {
+            "eligible_tasks": len(labeled),
+            "retained_tasks": retained,
+            "rate": retained / len(labeled),
+            "definition": "valid scene action returned within deadline / all injected tasks",
+        }
+        safety_summary = {
+            "severe_tasks": len(severe),
+            "severe_misses": severe_misses,
+            "severe_miss_rate": 0.0 if not severe else severe_misses / len(severe),
+            "normal_tasks": len(normal),
+            "false_isolations": false_isolations,
+            "false_isolation_rate": (
+                0.0 if not normal else false_isolations / len(normal)
+            ),
+        }
+        if action_labeled:
+            safety_summary.update(
+                {
+                    "action_labeled_tasks": action_labeled,
+                    "action_matches": action_matches,
+                    "action_match_rate": action_matches / action_labeled,
+                }
+            )
+        summary["safety"] = safety_summary
+    return summary
 
 
-def build_task(index: int, *, scene: str, deadline_ms: int) -> dict[str, Any]:
+def expected_case(index: int, *, scene: str) -> tuple[str, str, str]:
+    if scene == "industrial":
+        cases = (
+            ("normal", "low", "continue"),
+            ("warning", "medium", "inspect"),
+            ("critical", "critical", "shutdown"),
+        )
+    else:
+        cases = (
+            ("normal", "low", "keep_open"),
+            ("congested", "medium", "divert"),
+            ("incident", "critical", "close_lane"),
+        )
+    return cases[index % len(cases)]
+
+
+def build_task(
+    index: int,
+    *,
+    scene: str,
+    deadline_ms: int,
+    workload_mode: str = "edge_tasks",
+) -> dict[str, Any]:
     """Build a deterministic three-case workload for the selected scene."""
     if scene == "industrial":
         cases = (
@@ -147,13 +248,35 @@ def build_task(index: int, *, scene: str, deadline_ms: int) -> dict[str, Any]:
         )
 
     case_name, risk_level, payload = cases[index % len(cases)]
-    return {
+    task = {
         "task_id": f"benchmark-{scene}-{index:06d}",
         "scene": scene,
         "payload": payload,
         "risk_level": risk_level,
         "deadline_ms": deadline_ms,
         "metadata": {"benchmark_case": case_name},
+    }
+    if workload_mode == "edge_tasks":
+        return task
+    if workload_mode != "controller_cloud":
+        raise ValueError("unsupported workload_mode")
+    # Isolate the Cloud data path so a Toxiproxy profile is actually exercised.
+    # This is a labeled controller fixture, not an Edge model accuracy sample.
+    return {
+        "task": task,
+        "edge_result": {
+            "prediction": "uncertain",
+            "confidence": 0.55,
+            "action": "inspect",
+            "reason": "cloud-path benchmark fixture",
+            "latency_ms": 5.0,
+            "model_name": "benchmark-fixture",
+            "node_id": "edge-a",
+        },
+        "elapsed_ms": 5.0,
+        "origin_node": "edge-a",
+        "hop_count": 1,
+        "visited_nodes": ["edge-a", "edge-b"],
     }
 
 
@@ -163,7 +286,16 @@ async def _request_once(
     config: BenchmarkConfig,
     index: int,
 ) -> RequestResult:
-    task = build_task(index, scene=config.scene, deadline_ms=config.deadline_ms)
+    task = build_task(
+        index,
+        scene=config.scene,
+        deadline_ms=config.deadline_ms,
+        workload_mode=config.workload_mode,
+    )
+    expected_prediction, risk_level, expected_action = expected_case(
+        index,
+        scene=config.scene,
+    )
     request_body = json.dumps(
         task,
         ensure_ascii=False,
@@ -190,6 +322,9 @@ async def _request_once(
                     response_bytes=len(response_body),
                     status_code=response.status_code,
                     error=f"HTTP {response.status_code}",
+                    expected_prediction=expected_prediction,
+                    risk_level=risk_level,
+                    expected_action=expected_action,
                 )
 
             try:
@@ -204,6 +339,9 @@ async def _request_once(
                     response_bytes=len(response_body),
                     status_code=response.status_code,
                     error=f"Invalid JSON response: {error}",
+                    expected_prediction=expected_prediction,
+                    risk_level=risk_level,
+                    expected_action=expected_action,
                 )
 
             route_value = response_data.get("route") if isinstance(response_data, dict) else None
@@ -215,6 +353,14 @@ async def _request_once(
                 request_bytes=len(request_body),
                 response_bytes=len(response_body),
                 status_code=response.status_code,
+                expected_prediction=expected_prediction,
+                risk_level=risk_level,
+                expected_action=expected_action,
+                final_prediction=str(response_data.get("final_prediction", "")),
+                final_action=str(response_data.get("final_action", "")),
+                attempted_routes=tuple(
+                    str(item) for item in response_data.get("attempted_routes", [])
+                ),
             )
         except httpx.HTTPError as error:
             latency_ms = (time.perf_counter() - started) * 1000
@@ -227,6 +373,9 @@ async def _request_once(
                 response_bytes=0,
                 status_code=None,
                 error=f"{type(error).__name__}: {error}",
+                expected_prediction=expected_prediction,
+                risk_level=risk_level,
+                expected_action=expected_action,
             )
 
 
@@ -256,6 +405,7 @@ async def run_benchmark(config: BenchmarkConfig) -> dict[str, Any]:
             "byte_scope": "HTTP request and response body bytes; protocol headers excluded",
             "deadline_rate_definition": "successful responses within deadline / all requests",
             "network_fault_injection": "not performed by this runner",
+            "externally_applied_fault_profile": config.fault_profile,
         },
         "summary": summarize_results(
             results,
@@ -304,6 +454,7 @@ def main() -> int:
         scene=args.scene,
         deadline_ms=args.deadline_ms,
         timeout_ms=timeout_ms,
+        fault_profile=None,
     )
     report = asyncio.run(run_benchmark(config))
     serialized = json.dumps(report, ensure_ascii=False, indent=2)

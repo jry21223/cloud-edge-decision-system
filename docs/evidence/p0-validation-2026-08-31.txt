@@ -1,0 +1,79 @@
+Cloud-Edge P0 engineering validation
+Date: 2026-08-31 (Asia/Shanghai)
+Branch: codex/submission-20260830
+Candidate parent: 32f1ff3df90119e9e7b0af74c886b9b3b13999ac
+Scope: software engineering prototype; no industrial accuracy or competition claim.
+
+Final static/unit/configuration checks
+- Python 3.12 / Windows / Docker Desktop
+- Docker Engine: 29.6.1
+- ruff check src tests scripts: passed
+- python -m pytest -q: 80 passed
+- DATABASE_URL for isolated unit tests: sqlite:///:memory:
+- docker compose -f docker-compose.yml config -q: exit 0
+- docker compose -f docker-compose.yml -f compose.test.yml config -q: exit 0
+- git diff --check: exit 0
+
+Final source blob fingerprints (git hash-object)
+87238fb2275d514a1e22aea419dbb602250c5828 src/common/fallback.py
+8edf53744832df9eeec52752ebe83a60bcff0a84 src/services/controller/main.py
+f6fa3698b2fd0431f15189faf0b02369846f74d1 src/services/controller/fusion_store.py
+63eb493fd8b8a712d34d1f49ff57e5bf723e5082 src/services/recorder/main.py
+d185e2fc7675672bc07159a6af8b3627301912e9 scripts/benchmark_system.py
+64c15c83e24e23afa33e01f75420145a70b8152a scripts/run_weak_network_matrix.py
+
+Final container rebuild and integration
+- docker compose -f docker-compose.yml -f compose.test.yml up --build -d: exit 0
+- Seven application images built; Recorder, Cloud, Controller, Edge A/B healthy.
+- Edge A test controls enabled only by compose.test.yml.
+- Cloud delay configured at 350ms; Toxiproxy 2.12.0.
+- python scripts/smoke_test.py: exit 0
+  EDGE: 0.988ms
+  PEER_EDGE: 15.097ms
+  EDGE_SAFETY: 0.427ms
+  CLOUD: 375.167ms
+  EDGE_FALLBACK: 14.445ms
+  These are service response fields, not an independent full-client latency series.
+- Final synthetic image used submit_vision_task.build_request with --synthetic,
+  --force-confidence 0.55 and a new random task ID.
+- Result: task-scoped Peer/Fuse decision, 152.815ms reported by service;
+  identical complete request replay returned the identical cached JSON.
+- See p0-final-container-2026-08-31.json and p0-vision-routing-plan-2026-08-31.json.
+- Routing event contains ROI candidates and controller_received_image_bytes=false.
+  The default fusion stage first gathers feasible Peer evidence even when the
+  ranked single-target plan selected Cloud. This is not evidence that the
+  joint Route/Fuse policy has been optimized or formally compared.
+- Final offline critical-risk checks bypassed Edge deliberately to exercise
+  the compatibility Controller endpoint:
+  industrial -> EDGE_FALLBACK/shutdown; Cloud attempted; 14.404ms.
+  traffic -> EDGE_FALLBACK/close_lane; Cloud attempted; 14.991ms.
+- Proxy was restored and verified enabled=true with no toxics.
+
+Six-profile diagnostic matrix (earlier candidate snapshot)
+Command:
+python scripts/run_weak_network_matrix.py --profiles N0 RTT100 RTT300 BW5M CF5 OFFLINE --requests 6 --concurrency 2 --deadline-ms 500 --timeout-ms 1200 --recovery-window-requests 2 --recovery-window-seconds 5 --recovery-timeout-s 24 --output-dir experiments/results/p0-weaknet-valid-20260831
+- Exit 0; every profile recorded 6/6 Cloud attempts and exact proxy configuration.
+- All five post-fault recovery checks met three consecutive ~5-second windows.
+- Last timeline entry verifies enabled=true, toxics=[].
+- Raw per-request reports and summary: p0-weaknet-2026-08-31/.
+- This matrix predates the final arbitration/Recorder hardening and critical
+  fallback fix. Its failed results are intentionally preserved, not relabeled
+  as a complete rerun of the final source.
+- It discovered weaker fallback actions for critical Controller-only fixtures;
+  the final source fixes that case and the final container checks above verify it.
+- RTT100/RTT300 retained 0/6 within the 500ms client deadline in this small run.
+  No claim of >=90% weak-network business retention is supported.
+- CF5 observed zero request failures in this run. It is a connection-reset
+  probability, not 5% packet loss or a measured 5% request-failure rate.
+- Recovery observation duration includes waiting for three complete windows.
+- Workload skips Edge and uses synthetic telemetry. It cannot establish
+  complete image E2E latency, model accuracy, industrial safety or packet loss.
+
+Privacy and release boundary
+- No original PDFs, personal names, local absolute paths, chat exports,
+  model weights, private images, databases or credentials are included.
+- Tests and committed fixtures are explicitly synthetic.
+- Git authorship uses the repository handle and GitHub noreply address.
+- Full-interface authentication, PLC acknowledgements, cross-station association,
+  trained models, licensed datasets and representative repeated experiments
+  remain outside this P0 engineering validation.

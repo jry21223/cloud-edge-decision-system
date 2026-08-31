@@ -7,9 +7,11 @@ from typing import Any
 
 from common.adaptive_policy import dynamic_local_threshold
 from common.schemas import InferenceResult, Route, TaskRequest
+from common.vision import ClassicalVisionAdapter
 from services.edge_node.llm_adapter import maybe_llm_inference
 
 logger = logging.getLogger(__name__)
+_VISION_ADAPTER = ClassicalVisionAdapter()
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -89,6 +91,19 @@ def _traffic_inference(payload: dict[str, Any]) -> tuple[str, str, str, float]:
 
 def infer_locally(task: TaskRequest, node_id: str) -> InferenceResult:
     started = time.perf_counter()
+    if task.image is not None:
+        result = _VISION_ADAPTER.infer(task, node_id=node_id)
+        allow_test_controls = os.getenv("ALLOW_TEST_CONTROLS", "false").lower() == "true"
+        if allow_test_controls and "force_confidence" in task.metadata:
+            confidence = _clamp(float(task.metadata["force_confidence"]), 0.0, 1.0)
+            logger.warning("test control applied: task_id=%s control=force_confidence", task.task_id)
+            return result.model_copy(
+                update={
+                    "confidence": confidence,
+                    "reason": f"{result.reason}；测试控制 force_confidence 已应用",
+                }
+            )
+        return result
     if task.scene == "traffic":
         prediction, action, reason, confidence = _traffic_inference(task.payload)
     else:

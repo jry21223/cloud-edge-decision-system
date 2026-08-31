@@ -28,7 +28,10 @@ services:
     command: uvicorn services.cloud_node.main:app --host 0.0.0.0 --port 8000
     environment:
       RECORDER_URL: http://recorder:8000
+      CONTROLLER_URL: http://controller:8000
       CLOUD_INFERENCE_DELAY_MS: ${CLOUD_INFERENCE_DELAY_MS:-350}
+      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-2}
+      NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
     depends_on:
       recorder:
         condition: service_healthy
@@ -72,6 +75,11 @@ services:
       PEER_ENABLED: ${PEER_ENABLED:-true}
       PEER_TIMEOUT_MS: ${PEER_TIMEOUT_MS:-400}
       NODE_TTL_SECONDS: ${NODE_TTL_SECONDS:-15}
+      TRUSTED_NODE_ENDPOINTS: edge-a=http://edge-a:8000,edge-b=http://edge-b:8000,cloud-node=
+      NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
+      FUSION_STATE_DB: /state/fusion.db
+    volumes:
+      - controller-fusion-state:/state
     depends_on:
       recorder:
         condition: service_healthy
@@ -94,8 +102,12 @@ services:
       CONTROLLER_URL: http://controller:8000
       RECORDER_URL: http://recorder:8000
       LOCAL_CONFIDENCE_THRESHOLD: ${LOCAL_CONFIDENCE_THRESHOLD:-0.80}
-      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-5}
+      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-2}
       ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-false}
+      NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
+      EDGE_STATE_DB: /state/edge.db
+    volumes:
+      - edge-a-state:/state
     depends_on:
       controller:
         condition: service_healthy
@@ -118,8 +130,12 @@ services:
       CONTROLLER_URL: http://controller:8000
       RECORDER_URL: http://recorder:8000
       LOCAL_CONFIDENCE_THRESHOLD: ${LOCAL_CONFIDENCE_THRESHOLD:-0.80}
-      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-5}
+      HEARTBEAT_INTERVAL_SECONDS: ${HEARTBEAT_INTERVAL_SECONDS:-2}
       ALLOW_TEST_CONTROLS: ${ALLOW_TEST_CONTROLS:-false}
+      NODE_REGISTRATION_TOKEN: ${NODE_REGISTRATION_TOKEN:-}
+      EDGE_STATE_DB: /state/edge.db
+    volumes:
+      - edge-b-state:/state
     depends_on:
       controller:
         condition: service_healthy
@@ -148,3 +164,6 @@ networks:
 
 volumes:
   metrics-data:
+  controller-fusion-state:
+  edge-a-state:
+  edge-b-state:

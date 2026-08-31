@@ -1,0 +1,592 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-30T23:57:24.746511+00:00",
+  "profiles": [
+    "N0",
+    "RTT100",
+    "RTT300",
+    "BW5M",
+    "CF5",
+    "OFFLINE"
+  ],
+  "important_limitation": "CF5 is a probabilistic TCP connection reset. Toxiproxy 2.12.0 does not provide packet-level loss; packet-loss claims require tc netem evidence.",
+  "results": {
+    "N0": {
+      "summary": {
+        "total_requests": 6,
+        "successful_requests": 6,
+        "failed_requests": 0,
+        "success_rate": 1,
+        "deadline_met_requests": 6,
+        "deadline_met_rate": 1,
+        "route_distribution": {
+          "CLOUD": 6
+        },
+        "request_bytes_total": 2924,
+        "response_bytes_total": 6686,
+        "traffic_bytes_total": 9610,
+        "elapsed_s": 3.722379,
+        "throughput_rps": 1.6118724074359534,
+        "successful_throughput_rps": 1.6118724074359534,
+        "latency_ms": {
+          "count": 6,
+          "mean": 448.25265,
+          "p50": 446.6195,
+          "p95": 477.3725,
+          "p99": 482.55954
+        },
+        "cloud_path_attempted_requests": 6,
+        "business_retention": {
+          "eligible_tasks": 6,
+          "retained_tasks": 6,
+          "rate": 1,
+          "definition": "valid scene action returned within deadline / all injected tasks"
+        },
+        "safety": {
+          "severe_tasks": 2,
+          "severe_misses": 0,
+          "severe_miss_rate": 0,
+          "normal_tasks": 2,
+          "false_isolations": 0,
+          "false_isolation_rate": 0,
+          "action_labeled_tasks": 6,
+          "action_matches": 6,
+          "action_match_rate": 1
+        }
+      },
+      "recovery": null
+    },
+    "RTT100": {
+      "summary": {
+        "total_requests": 6,
+        "successful_requests": 6,
+        "failed_requests": 0,
+        "success_rate": 1,
+        "deadline_met_requests": 0,
+        "deadline_met_rate": 0,
+        "route_distribution": {
+          "CLOUD": 4,
+          "EDGE_FALLBACK": 2
+        },
+        "request_bytes_total": 2924,
+        "response_bytes_total": 6108,
+        "traffic_bytes_total": 9032,
+        "elapsed_s": 4.053558,
+        "throughput_rps": 1.4801812610195901,
+        "successful_throughput_rps": 1.4801812610195901,
+        "latency_ms": {
+          "count": 6,
+          "mean": 551.45205,
+          "p50": 548.4363,
+          "p95": 575.6106,
+          "p99": 577.2134
+        },
+        "cloud_path_attempted_requests": 6,
+        "business_retention": {
+          "eligible_tasks": 6,
+          "retained_tasks": 0,
+          "rate": 0,
+          "definition": "valid scene action returned within deadline / all injected tasks"
+        },
+        "safety": {
+          "severe_tasks": 2,
+          "severe_misses": 0,
+          "severe_miss_rate": 0,
+          "normal_tasks": 2,
+          "false_isolations": 0,
+          "false_isolation_rate": 0,
+          "action_labeled_tasks": 6,
+          "action_matches": 5,
+          "action_match_rate": 0.8333333333333334
+        }
+      },
+      "recovery": {
+        "recovered": true,
+        "recovery_time_ms": 17185.178,
+        "threshold": 0.95,
+        "windows": [
+          {
+            "elapsed_ms": 5622.52,
+            "window_seconds": 5.623,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 11293.169,
+            "window_seconds": 5.671,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 17185.178,
+            "window_seconds": 5.892,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          }
+        ]
+      }
+    },
+    "RTT300": {
+      "summary": {
+        "total_requests": 6,
+        "successful_requests": 6,
+        "failed_requests": 0,
+        "success_rate": 1,
+        "deadline_met_requests": 0,
+        "deadline_met_rate": 0,
+        "route_distribution": {
+          "EDGE_FALLBACK": 6
+        },
+        "request_bytes_total": 2924,
+        "response_bytes_total": 4895,
+        "traffic_bytes_total": 7819,
+        "elapsed_s": 4.044132,
+        "throughput_rps": 1.4836309880108085,
+        "successful_throughput_rps": 1.4836309880108085,
+        "latency_ms": {
+          "count": 6,
+          "mean": 557.46085,
+          "p50": 553.6645,
+          "p95": 580.248275,
+          "p99": 585.299575
+        },
+        "cloud_path_attempted_requests": 6,
+        "business_retention": {
+          "eligible_tasks": 6,
+          "retained_tasks": 0,
+          "rate": 0,
+          "definition": "valid scene action returned within deadline / all injected tasks"
+        },
+        "safety": {
+          "severe_tasks": 2,
+          "severe_misses": 2,
+          "severe_miss_rate": 1,
+          "normal_tasks": 2,
+          "false_isolations": 0,
+          "false_isolation_rate": 0,
+          "action_labeled_tasks": 6,
+          "action_matches": 2,
+          "action_match_rate": 0.3333333333333333
+        }
+      },
+      "recovery": {
+        "recovered": true,
+        "recovery_time_ms": 17318.632,
+        "threshold": 0.95,
+        "windows": [
+          {
+            "elapsed_ms": 5595.822,
+            "window_seconds": 5.596,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 11608.282,
+            "window_seconds": 6.012,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 17318.632,
+            "window_seconds": 5.71,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          }
+        ]
+      }
+    },
+    "BW5M": {
+      "summary": {
+        "total_requests": 6,
+        "successful_requests": 6,
+        "failed_requests": 0,
+        "success_rate": 1,
+        "deadline_met_requests": 6,
+        "deadline_met_rate": 1,
+        "route_distribution": {
+          "CLOUD": 6
+        },
+        "request_bytes_total": 2924,
+        "response_bytes_total": 6683,
+        "traffic_bytes_total": 9607,
+        "elapsed_s": 3.655607,
+        "throughput_rps": 1.6413141980923052,
+        "successful_throughput_rps": 1.6413141980923052,
+        "latency_ms": {
+          "count": 6,
+          "mean": 446.8662,
+          "p50": 444.67935,
+          "p95": 487.2421,
+          "p99": 489.59146
+        },
+        "cloud_path_attempted_requests": 6,
+        "business_retention": {
+          "eligible_tasks": 6,
+          "retained_tasks": 6,
+          "rate": 1,
+          "definition": "valid scene action returned within deadline / all injected tasks"
+        },
+        "safety": {
+          "severe_tasks": 2,
+          "severe_misses": 0,
+          "severe_miss_rate": 0,
+          "normal_tasks": 2,
+          "false_isolations": 0,
+          "false_isolation_rate": 0,
+          "action_labeled_tasks": 6,
+          "action_matches": 6,
+          "action_match_rate": 1
+        }
+      },
+      "recovery": {
+        "recovered": true,
+        "recovery_time_ms": 17381.002,
+        "threshold": 0.95,
+        "windows": [
+          {
+            "elapsed_ms": 5871.878,
+            "window_seconds": 5.872,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 11556.748,
+            "window_seconds": 5.685,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 17381.002,
+            "window_seconds": 5.824,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          }
+        ]
+      }
+    },
+    "CF5": {
+      "summary": {
+        "total_requests": 6,
+        "successful_requests": 6,
+        "failed_requests": 0,
+        "success_rate": 1,
+        "deadline_met_requests": 6,
+        "deadline_met_rate": 1,
+        "route_distribution": {
+          "CLOUD": 6
+        },
+        "request_bytes_total": 2924,
+        "response_bytes_total": 6686,
+        "traffic_bytes_total": 9610,
+        "elapsed_s": 3.847042,
+        "throughput_rps": 1.5596399290814231,
+        "successful_throughput_rps": 1.5596399290814231,
+        "latency_ms": {
+          "count": 6,
+          "mean": 425.9096,
+          "p50": 426.8348,
+          "p95": 434.17825,
+          "p99": 435.85757
+        },
+        "cloud_path_attempted_requests": 6,
+        "business_retention": {
+          "eligible_tasks": 6,
+          "retained_tasks": 6,
+          "rate": 1,
+          "definition": "valid scene action returned within deadline / all injected tasks"
+        },
+        "safety": {
+          "severe_tasks": 2,
+          "severe_misses": 0,
+          "severe_miss_rate": 0,
+          "normal_tasks": 2,
+          "false_isolations": 0,
+          "false_isolation_rate": 0,
+          "action_labeled_tasks": 6,
+          "action_matches": 6,
+          "action_match_rate": 1
+        }
+      },
+      "recovery": {
+        "recovered": true,
+        "recovery_time_ms": 16895.42,
+        "threshold": 0.95,
+        "windows": [
+          {
+            "elapsed_ms": 5747.126,
+            "window_seconds": 5.747,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 11225.86,
+            "window_seconds": 5.479,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 16895.42,
+            "window_seconds": 5.67,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          }
+        ]
+      }
+    },
+    "OFFLINE": {
+      "summary": {
+        "total_requests": 6,
+        "successful_requests": 6,
+        "failed_requests": 0,
+        "success_rate": 1,
+        "deadline_met_requests": 6,
+        "deadline_met_rate": 1,
+        "route_distribution": {
+          "EDGE_FALLBACK": 6
+        },
+        "request_bytes_total": 2924,
+        "response_bytes_total": 4890,
+        "traffic_bytes_total": 7814,
+        "elapsed_s": 2.483393,
+        "throughput_rps": 2.416049137954149,
+        "successful_throughput_rps": 2.416049137954149,
+        "latency_ms": {
+          "count": 6,
+          "mean": 72.59875,
+          "p50": 70.42615,
+          "p95": 91.663125,
+          "p99": 96.821585
+        },
+        "cloud_path_attempted_requests": 6,
+        "business_retention": {
+          "eligible_tasks": 6,
+          "retained_tasks": 6,
+          "rate": 1,
+          "definition": "valid scene action returned within deadline / all injected tasks"
+        },
+        "safety": {
+          "severe_tasks": 2,
+          "severe_misses": 2,
+          "severe_miss_rate": 1,
+          "normal_tasks": 2,
+          "false_isolations": 0,
+          "false_isolation_rate": 0,
+          "action_labeled_tasks": 6,
+          "action_matches": 2,
+          "action_match_rate": 0.3333333333333333
+        }
+      },
+      "recovery": {
+        "recovered": true,
+        "recovery_time_ms": 16781.598,
+        "threshold": 0.95,
+        "windows": [
+          {
+            "elapsed_ms": 5596.788,
+            "window_seconds": 5.597,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 11253.248,
+            "window_seconds": 5.656,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          },
+          {
+            "elapsed_ms": 16781.598,
+            "window_seconds": 5.528,
+            "batches": 2,
+            "eligible_tasks": 4,
+            "retained_tasks": 4,
+            "retention": 1
+          }
+        ]
+      }
+    }
+  },
+  "fault_timeline": [
+    {
+      "at": "2026-08-30T23:53:07.438562+00:00",
+      "event": "profile_applied",
+      "profile": "N0",
+      "proxy_enabled": true,
+      "toxics": []
+    },
+    {
+      "at": "2026-08-30T23:53:20.946979+00:00",
+      "event": "profile_applied",
+      "profile": "RTT100",
+      "proxy_enabled": true,
+      "toxics": [
+        {
+          "attributes": {
+            "latency": 50,
+            "jitter": 0
+          },
+          "name": "latency-up",
+          "type": "latency",
+          "stream": "upstream",
+          "toxicity": 1
+        },
+        {
+          "attributes": {
+            "latency": 50,
+            "jitter": 0
+          },
+          "name": "latency-down",
+          "type": "latency",
+          "stream": "downstream",
+          "toxicity": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-08-30T23:53:54.162425+00:00",
+      "event": "baseline_restored",
+      "profile": "RTT100",
+      "proxy_enabled": true,
+      "toxics": []
+    },
+    {
+      "at": "2026-08-30T23:54:11.349279+00:00",
+      "event": "profile_applied",
+      "profile": "RTT300",
+      "proxy_enabled": true,
+      "toxics": [
+        {
+          "attributes": {
+            "latency": 150,
+            "jitter": 0
+          },
+          "name": "latency-up",
+          "type": "latency",
+          "stream": "upstream",
+          "toxicity": 1
+        },
+        {
+          "attributes": {
+            "latency": 150,
+            "jitter": 0
+          },
+          "name": "latency-down",
+          "type": "latency",
+          "stream": "downstream",
+          "toxicity": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-08-30T23:54:44.561759+00:00",
+      "event": "baseline_restored",
+      "profile": "RTT300",
+      "proxy_enabled": true,
+      "toxics": []
+    },
+    {
+      "at": "2026-08-30T23:55:01.882357+00:00",
+      "event": "profile_applied",
+      "profile": "BW5M",
+      "proxy_enabled": true,
+      "toxics": [
+        {
+          "attributes": {
+            "rate": 625
+          },
+          "name": "bandwidth-up",
+          "type": "bandwidth",
+          "stream": "upstream",
+          "toxicity": 1
+        },
+        {
+          "attributes": {
+            "rate": 625
+          },
+          "name": "bandwidth-down",
+          "type": "bandwidth",
+          "stream": "downstream",
+          "toxicity": 1
+        }
+      ]
+    },
+    {
+      "at": "2026-08-30T23:55:33.943863+00:00",
+      "event": "baseline_restored",
+      "profile": "BW5M",
+      "proxy_enabled": true,
+      "toxics": []
+    },
+    {
+      "at": "2026-08-30T23:55:51.326396+00:00",
+      "event": "profile_applied",
+      "profile": "CF5",
+      "proxy_enabled": true,
+      "toxics": [
+        {
+          "attributes": {
+            "timeout": 0
+          },
+          "name": "connection-reset",
+          "type": "reset_peer",
+          "stream": "downstream",
+          "toxicity": 0.05
+        }
+      ]
+    },
+    {
+      "at": "2026-08-30T23:56:19.927905+00:00",
+      "event": "baseline_restored",
+      "profile": "CF5",
+      "proxy_enabled": true,
+      "toxics": []
+    },
+    {
+      "at": "2026-08-30T23:56:36.824529+00:00",
+      "event": "profile_applied",
+      "profile": "OFFLINE",
+      "proxy_enabled": false,
+      "toxics": []
+    },
+    {
+      "at": "2026-08-30T23:56:58.554497+00:00",
+      "event": "baseline_restored",
+      "profile": "OFFLINE",
+      "proxy_enabled": true,
+      "toxics": []
+    },
+    {
+      "at": "2026-08-30T23:57:24.746511+00:00",
+      "event": "final_restore",
+      "proxy_enabled": true,
+      "toxics": []
+    }
+  ]
+}

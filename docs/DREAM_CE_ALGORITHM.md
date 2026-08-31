@@ -90,6 +90,9 @@ Consensus(y) = E(y) / sum(E(all outcomes))
 相机对同一工件/区域的时空一致性作为`spatial_consistency`，按产线、批次和缺陷类型统计的
 验证正确率用于更新`node_reliability`。MIMII 工业声学保留为历史备选，不属于当前提交主线。
 
+上述跨工位关联属于后续场景适配设计。当前 P0 视觉主链只对同一 `task_id` 的多个 Peer 结果
+仲裁，不会根据工件字段自动合并不同任务，以避免未经验证的关联污染终态。
+
 ### 交通CityFlow
 
 每个摄像头边缘节点执行检测、单摄像头跟踪和ReID特征提取；摄像头拓扑、合理通行时间和
@@ -105,8 +108,10 @@ conflict_rate = conflicting_related_tasks / all_related_tasks
 resolution_success_rate = correct_final_decisions / labeled_conflicts
 ```
 
-测试任务可在`task.metadata.ground_truth_prediction`提供真值。Recorder只有在存在真值时才
-计算`resolution_success_rate`，避免把“成功返回一个结果”误报为“仲裁正确”。
+测试或人工标注在推理完成后通过 Recorder 的
+`PUT /v1/ground-truth/{association_id}` 独立附加。真值不进入 Edge/Cloud 请求，也不参与路由和
+仲裁；Recorder 只有在冲突组存在事后真值时才计算 `resolution_success_rate`，避免标签泄漏，
+也避免把“成功返回一个结果”误报为“仲裁正确”。
 
 ## 8. 当前实现与待接入部分
 
@@ -116,7 +121,7 @@ resolution_success_rate = correct_final_decisions / labeled_conflicts
 - 路由候选代价排序；
 - 节点可靠度参与Peer选择；
 - 置信度、可靠度、新鲜度、时空一致性证据融合；
-- 低共识云端复核与带真值指标口径；
+- 低共识云端待复核状态与事后真值指标口径；
 - 紧急安全动作和断网保守降级。
 
 待数据到位后实现：
@@ -127,9 +132,12 @@ resolution_success_rate = correct_final_decisions / labeled_conflicts
 - 边侧量化模型真实内存和TTFT测试；
 - 网络压力回放及消融实验。
 
-当前实现边界：网络快照由任务 metadata 提供，节点负载/队列由心跳配置上报；DREAM-Fuse 是
-独立仲裁 API，普通 `/v1/tasks` 链路尚未自动聚合多个 Peer 结果。这些模块完成在线遥测和主链
-集成前，应表述为“已实现算法原型”，不能表述为生产级闭环。
+当前实现边界（2026-08-31 P0）：Edge/Cloud 已采集在线 CPU、RSS、可用 GPU、并发队列和服务
+时间，Edge 的实际远端请求更新 RTT/带宽 EWMA；视觉 `/v1/tasks` 默认聚合可用 Peer 并调用
+DREAM-Fuse，P0 关联范围为单个 `task_id`。自主终态按关联 ID 持久化，完全相同重试幂等返回，
+变更提案只作为迟到证据且不得覆盖；低共识 Cloud 待复核不误写为自主终态。抖动、包级丢包、节点可靠度在线学习和
+真实工业模型效果仍无正式数据证据，因此准确表述仍是“P0 软件原型闭环”，不是生产级系统或
+比赛硬指标已达标。
 
 ## 9. 必须进行的消融实验
 

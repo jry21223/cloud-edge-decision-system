@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
+from common.fallback import conservative_fallback
 from common.schemas import EscalationRequest, InferenceResult, Route, TaskRequest
 from services.controller import main as controller_main
 from services.edge_node import main as edge_main
@@ -21,6 +22,16 @@ class UnavailableControllerClient:
 
     async def post(self, *args, **kwargs):
         raise httpx.ConnectError("controller unavailable")
+
+
+@pytest.mark.parametrize("scene,expected", [("industrial", "shutdown"), ("traffic", "close_lane")])
+def test_critical_risk_fallback_cannot_be_reduced_to_inspection(scene, expected):
+    task = TaskRequest(scene=scene, payload={}, risk_level="critical")
+    uncertain = InferenceResult(
+        prediction="normal", action="continue", confidence=0.55,
+        reason="uncertain fixture", latency_ms=1, model_name="fixture", node_id="edge-a",
+    )
+    assert conservative_fallback(task, uncertain)[1] == expected
 
 
 @pytest.mark.asyncio

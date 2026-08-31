@@ -1,0 +1,260 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-30T23:54:30.004783+00:00",
+  "configuration": {
+    "url": "http://localhost:8002/v1/escalate",
+    "request_count": 6,
+    "concurrency": 2,
+    "scene": "industrial",
+    "deadline_ms": 500,
+    "timeout_ms": 1200,
+    "fault_profile": "RTT300",
+    "workload_mode": "controller_cloud"
+  },
+  "measurement_notes": {
+    "latency_scope": "client POST start through complete response body; semaphore wait excluded",
+    "byte_scope": "HTTP request and response body bytes; protocol headers excluded",
+    "deadline_rate_definition": "successful responses within deadline / all requests",
+    "network_fault_injection": "not performed by this runner",
+    "externally_applied_fault_profile": "RTT300"
+  },
+  "summary": {
+    "total_requests": 6,
+    "successful_requests": 6,
+    "failed_requests": 0,
+    "success_rate": 1,
+    "deadline_met_requests": 0,
+    "deadline_met_rate": 0,
+    "route_distribution": {
+      "EDGE_FALLBACK": 6
+    },
+    "request_bytes_total": 2924,
+    "response_bytes_total": 4895,
+    "traffic_bytes_total": 7819,
+    "elapsed_s": 4.044132,
+    "throughput_rps": 1.4836309880108085,
+    "successful_throughput_rps": 1.4836309880108085,
+    "latency_ms": {
+      "count": 6,
+      "mean": 557.46085,
+      "p50": 553.6645,
+      "p95": 580.248275,
+      "p99": 585.299575
+    },
+    "cloud_path_attempted_requests": 6,
+    "business_retention": {
+      "eligible_tasks": 6,
+      "retained_tasks": 0,
+      "rate": 0,
+      "definition": "valid scene action returned within deadline / all injected tasks"
+    },
+    "safety": {
+      "severe_tasks": 2,
+      "severe_misses": 2,
+      "severe_miss_rate": 1,
+      "normal_tasks": 2,
+      "false_isolations": 0,
+      "false_isolation_rate": 0,
+      "action_labeled_tasks": 6,
+      "action_matches": 2,
+      "action_match_rate": 0.3333333333333333
+    }
+  },
+  "requests": [
+    {
+      "index": 0,
+      "success": true,
+      "latency_ms": 586.5624,
+      "route": "EDGE_FALLBACK",
+      "request_bytes": 483,
+      "response_bytes": 816,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "normal",
+      "risk_level": "low",
+      "final_prediction": "uncertain",
+      "final_action": "inspect",
+      "expected_action": "continue",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 1,
+      "success": true,
+      "latency_ms": 541.8143,
+      "route": "EDGE_FALLBACK",
+      "request_bytes": 488,
+      "response_bytes": 816,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "warning",
+      "risk_level": "medium",
+      "final_prediction": "uncertain",
+      "final_action": "inspect",
+      "expected_action": "inspect",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 2,
+      "success": true,
+      "latency_ms": 561.3059,
+      "route": "EDGE_FALLBACK",
+      "request_bytes": 491,
+      "response_bytes": 816,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "critical",
+      "risk_level": "critical",
+      "final_prediction": "uncertain",
+      "final_action": "inspect",
+      "expected_action": "shutdown",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 3,
+      "success": true,
+      "latency_ms": 547.7535,
+      "route": "EDGE_FALLBACK",
+      "request_bytes": 483,
+      "response_bytes": 815,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "normal",
+      "risk_level": "low",
+      "final_prediction": "uncertain",
+      "final_action": "inspect",
+      "expected_action": "continue",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 4,
+      "success": true,
+      "latency_ms": 558.3449,
+      "route": "EDGE_FALLBACK",
+      "request_bytes": 488,
+      "response_bytes": 816,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "warning",
+      "risk_level": "medium",
+      "final_prediction": "uncertain",
+      "final_action": "inspect",
+      "expected_action": "inspect",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    },
+    {
+      "index": 5,
+      "success": true,
+      "latency_ms": 548.9841,
+      "route": "EDGE_FALLBACK",
+      "request_bytes": 491,
+      "response_bytes": 816,
+      "status_code": 200,
+      "error": null,
+      "expected_prediction": "critical",
+      "risk_level": "critical",
+      "final_prediction": "uncertain",
+      "final_action": "inspect",
+      "expected_action": "shutdown",
+      "attempted_routes": [
+        "CLOUD"
+      ]
+    }
+  ],
+  "fault_profile": {
+    "name": "RTT300",
+    "enabled": true,
+    "toxics": [
+      {
+        "name": "latency-up",
+        "toxic_type": "latency",
+        "stream": "upstream",
+        "toxicity": 1,
+        "attributes": {
+          "latency": 150,
+          "jitter": 0
+        }
+      },
+      {
+        "name": "latency-down",
+        "toxic_type": "latency",
+        "stream": "downstream",
+        "toxicity": 1,
+        "attributes": {
+          "latency": 150,
+          "jitter": 0
+        }
+      }
+    ],
+    "interpretation": "approximately 300ms added round-trip latency; verify with observed RTT",
+    "applied_proxy_state": {
+      "name": "cloud",
+      "listen": "[::]:8666",
+      "upstream": "cloud-node:8000",
+      "enabled": true,
+      "Logger": {},
+      "toxics": [
+        {
+          "attributes": {
+            "latency": 150,
+            "jitter": 0
+          },
+          "name": "latency-up",
+          "type": "latency",
+          "stream": "upstream",
+          "toxicity": 1
+        },
+        {
+          "attributes": {
+            "latency": 150,
+            "jitter": 0
+          },
+          "name": "latency-down",
+          "type": "latency",
+          "stream": "downstream",
+          "toxicity": 1
+        }
+      ]
+    }
+  },
+  "recovery": {
+    "recovered": true,
+    "recovery_time_ms": 17318.632,
+    "threshold": 0.95,
+    "windows": [
+      {
+        "elapsed_ms": 5595.822,
+        "window_seconds": 5.596,
+        "batches": 2,
+        "eligible_tasks": 4,
+        "retained_tasks": 4,
+        "retention": 1
+      },
+      {
+        "elapsed_ms": 11608.282,
+        "window_seconds": 6.012,
+        "batches": 2,
+        "eligible_tasks": 4,
+        "retained_tasks": 4,
+        "retention": 1
+      },
+      {
+        "elapsed_ms": 17318.632,
+        "window_seconds": 5.71,
+        "batches": 2,
+        "eligible_tasks": 4,
+        "retained_tasks": 4,
+        "retention": 1
+      }
+    ]
+  }
+}
